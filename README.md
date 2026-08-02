@@ -4,6 +4,8 @@ Juego de conquista, historia y brindis para 2 a 6 jugadores, cada uno desde su m
 
 Tablero de 12 territorios repartidos en 3 Eras (Grecia/Roma → Rutas de Oriente → Renacimiento y Nuevo Mundo) — **el mapa se genera al azar en cada partida** (hay 8 regiones posibles por Era, se eligen 4 y se conectan de forma distinta cada vez), combate por dados al estilo Risk (atacas desde un territorio tuyo concreto, con las tropas que tengas ahí estacionadas), cartas de Personaje y los Desafíos de estrategia+bebida. También puedes jugar contra bots para probarlo sin esperar a tener gente disponible.
 
+El tablero se ve como un mapa fraccionado de verdad, sin círculos ni marcadores sueltos: cada territorio es un fragmento de terreno con su propio color desde el primer turno — en cuanto alguien lo conquista, se repinta con el color de ese jugador — y hay una frontera marcada entre fragmentos, como en un mapa de conquista. El borde de tus territorios se ve dorado, y el de los que hacen frontera contigo (= los que puedes atacar ahora mismo) rojo. Toca cualquier fragmento para ver su ficha completa en la lista de abajo.
+
 ## Requisitos
 
 - Node.js 18 o superior (no hace falta nada más — el proyecto no tiene dependencias externas, así que **no hace falta `npm install`**).
