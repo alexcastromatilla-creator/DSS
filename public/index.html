@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>El Banquete</title>
+<style>
+  :root {
+    --bg: #1b1622; --panel: #2a2233; --accent: #d4a24c; --text: #f2ece0;
+    --p0: #e15757; --p1: #4cb8a0; --p2: #e1a940;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  #app { max-width: 480px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
+  h1 { font-size: 1.5rem; text-align: center; color: var(--accent); margin: 12px 0 4px; letter-spacing: 1px; }
+  h2 { font-size: 1.1rem; color: var(--accent); margin: 18px 0 8px; }
+  .sub { text-align: center; color: #b8afc4; font-size: 0.85rem; margin-bottom: 16px; }
+  .card { background: var(--panel); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  input[type=text] {
+    width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #4a3f5c; background: #17131d; color: var(--text);
+    font-size: 1rem; margin-bottom: 10px;
+  }
+  select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #4a3f5c; background: #17131d; color: var(--text); margin-bottom: 10px; font-size: 0.95rem;}
+  button {
+    width: 100%; padding: 13px; border-radius: 8px; border: none; background: var(--accent); color: #1b1622;
+    font-weight: 700; font-size: 1rem; margin-bottom: 8px; cursor: pointer;
+  }
+  button:disabled { opacity: 0.45; }
+  button.secondary { background: #423861; color: var(--text); }
+  .option-btn { background: #3a3050; color: var(--text); text-align: left; font-weight: 500; }
+  .option-btn.chosen { background: var(--accent); color: #1b1622; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; margin-right: 4px; }
+  .players-list { display: flex; flex-direction: column; gap: 8px; }
+  .player-chip { display: flex; justify-content: space-between; align-items: center; background: #241d2e; padding: 8px 12px; border-radius: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .territories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .territory { background: #241d2e; border-radius: 8px; padding: 8px; font-size: 0.8rem; border: 2px solid transparent; }
+  .log { font-size: 0.85rem; color: #cbc2d9; max-height: 160px; overflow-y: auto; }
+  .log div { padding: 4px 0; border-bottom: 1px solid #382e48; }
+  .timer { text-align: center; font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; }
+  .center { text-align: center; }
+  .muted { color: #9d92ae; font-size: 0.85rem; }
+  .flavor { font-style: italic; color: #cbc2d9; line-height: 1.4; }
+  .rank { display: flex; justify-content: space-between; padding: 10px; background: #241d2e; border-radius: 8px; margin-bottom: 6px; }
+  .rank.first { border: 2px solid var(--accent); }
+  #err { color: #ff8080; text-align: center; min-height: 20px; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>🍷 EL BANQUETE</h1>
+  <div class="sub">Estrategia, historia y brindis — para 3</div>
+  <div id="err"></div>
+  <div id="screen"></div>
+</div>
+
+<script>
+let myId = localStorage.getItem('banquete_playerId') || null;
+let state = null;
+let joinedName = '';
+const screen = document.getElementById('screen');
+const errBox = document.getElementById('err');
+
+const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)'];
+
+function colorFor(playerId) {
+  if (!state) return '#666';
+  const idx = state.players.findIndex(p => p.id === playerId);
+  return idx >= 0 ? PLAYER_COLORS[idx] : '#666';
+}
+function nameFor(playerId) {
+  if (!state) return '';
+  const p = state.players.find(p => p.id === playerId);
+  return p ? p.name : '';
+}
+
+function showError(msg) {
+  errBox.textContent = msg;
+  setTimeout(() => { errBox.textContent = ''; }, 3500);
+}
+
+function handleNotice(notice) {
+  if (!notice) return;
+  if (notice.type === 'trivia_bonus') {
+    errBox.style.color = '#8ce08c';
+    errBox.textContent = '¡Ventaja táctica conseguida para este combate!';
+    setTimeout(() => { errBox.textContent = ''; errBox.style.color = '#ff8080'; }, 3000);
+  } else if (notice.type === 'spy_result') {
+    alert(`Espionaje sobre ${notice.target}:\n${notice.info}`);
+  }
+}
+
+function call(action, payload) {
+  return fetch('/api/' + action, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...(payload || {}), playerId: myId }),
+  }).then((r) => r.json()).then((r) => { if (r && r.error) showError(r.error); return r; });
+}
+
+let es = null;
+function connectStream() {
+  if (es) es.close();
+  es = new EventSource('/events?playerId=' + encodeURIComponent(myId));
+  es.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    handleNotice(data.notice);
+    state = data;
+    render();
+  };
+}
+
+async function boot() {
+  if (!myId) {
+    const r = await fetch('/api/new_id').then((x) => x.json());
+    myId = r.playerId;
+    localStorage.setItem('banquete_playerId', myId);
+  }
+  connectStream();
+  render();
+}
+boot();
+
+function render() {
+  if (!state) return renderConnect();
+  switch (state.phase) {
+    case 'lobby': return renderLobby();
+    case 'era_intro': return renderEraIntro();
+    case 'trivia': return renderTrivia();
+    case 'orders': return renderOrders();
+    case 'resolve': return renderResolve();
+    case 'desafio': return renderDesafio();
+    case 'simposio': return renderSimposio();
+    case 'fin': return renderFin();
+    default: return renderConnect();
+  }
+}
+
+function renderConnect() {
+  screen.innerHTML = `
+    <div class="card">
+      <h2>Entrar en una partida</h2>
+      <input type="text" id="nameInput" placeholder="Tu nombre" maxlength="20">
+      <button id="createBtn">Crear sala nueva</button>
+    </div>
+    <div class="card">
+      <h2>Unirte a una sala</h2>
+      <input type="text" id="codeInput" placeholder="Código de sala (ej. LYNX)" maxlength="4" style="text-transform:uppercase">
+      <button class="secondary" id="joinBtn">Unirme</button>
+    </div>
+  `;
+  document.getElementById('createBtn').onclick = () => {
+    joinedName = document.getElementById('nameInput').value || 'Jugador';
+    call('create_room', { name: joinedName });
+  };
+  document.getElementById('joinBtn').onclick = () => {
+    joinedName = document.getElementById('nameInput').value || 'Jugador';
+    const code = document.getElementById('codeInput').value;
+    call('join_room', { code, name: joinedName });
+  };
+}
+
+function renderLobby() {
+  const isHost = state.players[0] && state.players[0].id === myId;
+  const me = state.players.find(p => p.id === myId);
+  const archOptions = ['filosofo', 'estratega', 'diplomatico'];
+  const archNames = { filosofo: 'El Filósofo', estratega: 'El Estratega', diplomatico: 'El Diplomático' };
+  const archDesc = {
+    filosofo: '+1 dado siempre que defiendes.',
+    estratega: 'Al espiar, +1 legión extra de reserva.',
+    diplomatico: 'Al ganar un debate, tu Gloria se duplica.',
+  };
+  screen.innerHTML = `
+    <div class="card center">
+      <div class="muted">Código de sala</div>
+      <h1 style="margin:4px 0;">${state.code}</h1>
+      <div class="muted">Compártelo con tus otros 2 jugadores</div>
+    </div>
+    <div class="card">
+      <h2>Jugadores (${state.players.length}/3)</h2>
+      <div class="players-list">
+        ${state.players.map((p, i) => `
+          <div class="player-chip">
+            <span><span class="dot" style="background:${PLAYER_COLORS[i]}"></span>${p.name}${p.id === myId ? ' (tú)' : ''}</span>
+            <span class="muted">${p.archetype ? archNames[p.archetype] : 'eligiendo…'}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h2>Elige tu Arquetipo</h2>
+      ${archOptions.map(a => {
+        const takenBy = state.players.find(p => p.archetype === a && p.id !== myId);
+        const mine = me && me.archetype === a;
+        return `<button class="option-btn ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-arch="${a}">
+          ${archNames[a]} ${takenBy ? '(ocupado)' : ''}<br><span class="muted" style="font-weight:400;">${archDesc[a]}</span>
+        </button>`;
+      }).join('')}
+    </div>
+    ${isHost ? `<button id="startBtn">Empezar partida</button>` : `<div class="muted center">Esperando a que el anfitrión empiece la partida…</div>`}
+  `;
+  document.querySelectorAll('[data-arch]').forEach(btn => {
+    btn.onclick = () => call('choose_archetype', { archetype: btn.dataset.arch });
+  });
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) startBtn.onclick = () => call('start_game');
+}
+
+function renderEraIntro() {
+  screen.innerHTML = `
+    <div class="card">
+      <h2>${state.eraInfo.titulo}</h2>
+      <p class="flavor">${state.eraInfo.flavor}</p>
+    </div>
+    ${renderBoard()}
+    <button id="cont">Continuar</button>
+  `;
+  document.getElementById('cont').onclick = () => call('continue');
+}
+
+function renderTrivia() {
+  const answered = state.questionAnswered.includes(myId);
+  screen.innerHTML = `
+    ${renderTimer()}
+    <div class="card">
+      <h2>⚡ Ventaja táctica</h2>
+      <p>${state.question.q}</p>
+      ${state.question.options.map((opt, i) => `<button class="option-btn" data-i="${i}" ${answered ? 'disabled' : ''}>${opt}</button>`).join('')}
+      <p class="muted">Respondido: ${state.questionAnswered.length}/3</p>
+    </div>
+  `;
+  if (!answered) {
+    document.querySelectorAll('[data-i]').forEach(btn => {
+      btn.onclick = () => call('submit_answer', { optionIndex: parseInt(btn.dataset.i) });
+    });
+  }
+}
+
+function renderOrders() {
+  const me = state.players.find(p => p.id === myId);
+  const submitted = state.ordersSubmitted.includes(myId);
+  const myTerritories = Object.values(state.territories).filter(t => t.open && t.owner === myId);
+  const attackable = Object.values(state.territories).filter(t => t.open && t.owner !== myId);
+  const otherPlayers = state.players.filter(p => p.id !== myId);
+
+  screen.innerHTML = `
+    ${renderTimer()}
+    ${renderBoard()}
+    <div class="card">
+      <h2>Tus órdenes — Ronda ${state.round}</h2>
+      <p class="muted">Reserva disponible: ${me.reserve} legiones</p>
+      ${submitted ? `<p class="center">Orden enviada. Esperando a los demás (${state.ordersSubmitted.length}/3)…</p>` : `
+      <select id="orderType">
+        <option value="atacar">⚔️ Atacar</option>
+        <option value="reforzar">🛡️ Reforzar</option>
+        <option value="reclutar">👑 Reclutar Personaje</option>
+        <option value="espiar">🕵️ Espiar</option>
+      </select>
+      <div id="orderFields"></div>
+      <button id="sendOrder">Enviar orden</button>
+      `}
+    </div>
+    ${state.you.characters.length ? `<div class="card"><h2>Tus Personajes</h2>${state.you.characters.map(c => `<div class="muted">👑 ${c.name} — ${c.flavor}</div>`).join('')}</div>` : ''}
+  `;
+  if (submitted) return;
+
+  function renderFields() {
+    const type = document.getElementById('orderType').value;
+    const fields = document.getElementById('orderFields');
+    if (type === 'atacar') {
+      fields.innerHTML = `
+        <select id="targetTerr">${attackable.map(t => `<option value="${t.id}">${t.name} (${t.owner ? nameFor(t.owner) : 'neutral'}, ${t.armies} legiones)</option>`).join('')}</select>
+        <input type="text" id="amount" placeholder="Legiones a enviar (máx ${me.reserve})">
+      `;
+    } else if (type === 'reforzar') {
+      fields.innerHTML = myTerritories.length ? `
+        <select id="targetTerr">${myTerritories.map(t => `<option value="${t.id}">${t.name} (${t.armies} legiones)</option>`).join('')}</select>
+        <input type="text" id="amount" placeholder="Legiones a añadir (máx ${me.reserve})">
+      ` : `<p class="muted">Aún no controlas ningún territorio.</p>`;
+    } else if (type === 'espiar') {
+      fields.innerHTML = `<select id="targetPlayer">${otherPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>`;
+    } else {
+      fields.innerHTML = `<p class="muted">Robas 1 personaje al azar del mazo de esta Era.</p>`;
+    }
+  }
+  document.getElementById('orderType').onchange = renderFields;
+  renderFields();
+
+  document.getElementById('sendOrder').onclick = () => {
+    const type = document.getElementById('orderType').value;
+    let order = { type };
+    if (type === 'atacar') {
+      order.to = document.getElementById('targetTerr').value;
+      order.amount = parseInt(document.getElementById('amount').value) || 0;
+    } else if (type === 'reforzar') {
+      if (!myTerritories.length) return;
+      order.territoryId = document.getElementById('targetTerr').value;
+      order.amount = parseInt(document.getElementById('amount').value) || 0;
+    } else if (type === 'espiar') {
+      order.targetId = document.getElementById('targetPlayer').value;
+    }
+    call('submit_order', { order });
+  };
+}
+
+function renderResolve() {
+  const isHost = state.players[0] && state.players[0].id === myId;
+  screen.innerHTML = `
+    <div class="card">
+      <h2>Resultado de la Ronda ${state.round}</h2>
+      <div class="log">${(state.resolveLog || []).map(l => `<div>${l}</div>`).join('')}</div>
+    </div>
+    ${renderBoard()}
+    ${isHost ? `<button id="cont">Continuar</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}
+  `;
+  const btn = document.getElementById('cont');
+  if (btn) btn.onclick = () => call('continue');
+}
+
+function renderDesafio() {
+  const d = state.desafio;
+  const responded = state.desafioResponses.includes(myId);
+  let optionsHtml = '';
+  if (d.tipo === 'votacion') {
+    const others = state.players.filter(p => p.id !== myId);
+    optionsHtml = others.map(p => `<button class="option-btn" data-c="${p.id}" ${responded ? 'disabled' : ''}>${p.name}</button>`).join('');
+  } else {
+    optionsHtml = d.opciones.map((opt, i) => `<button class="option-btn" data-c="${i}" ${responded ? 'disabled' : ''}>${opt}</button>`).join('');
+  }
+  screen.innerHTML = `
+    ${renderTimer()}
+    <div class="card">
+      <h2>🥂 Desafío: ${d.titulo}</h2>
+      <p>${d.texto}</p>
+      ${optionsHtml}
+      <p class="muted">Respondido: ${state.desafioResponses.length}/3</p>
+    </div>
+  `;
+  if (!responded) {
+    document.querySelectorAll('[data-c]').forEach(btn => {
+      btn.onclick = () => {
+        let choice = btn.dataset.c;
+        if (d.tipo !== 'votacion') choice = parseInt(choice);
+        call('submit_desafio_choice', { choice });
+      };
+    });
+  }
+}
+
+function renderSimposio() {
+  const isHost = state.players[0] && state.players[0].id === myId;
+  screen.innerHTML = `
+    <div class="card">
+      <h2>🏛 Simposio — Fin de la Era ${state.era}</h2>
+      ${(state.simposioResult || []).map(r => `<div class="rank"><span>${r.name}</span><span>${r.territorios} territorio(s) → +${r.ganancia} Gloria</span></div>`).join('')}
+    </div>
+    <div class="card">
+      <h2>Gloria total</h2>
+      ${[...state.players].sort((a,b)=>b.gloria-a.gloria).map(p => `<div class="rank"><span>${p.name}</span><span>${p.gloria} 🏆</span></div>`).join('')}
+    </div>
+    ${isHost ? `<button id="cont">${state.era < 3 ? 'Comenzar siguiente Era' : 'Ver resultado final'}</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}
+  `;
+  const btn = document.getElementById('cont');
+  if (btn) btn.onclick = () => call('continue');
+}
+
+function renderFin() {
+  screen.innerHTML = `
+    <div class="card center">
+      <h2>🏆 Fin de la partida</h2>
+      ${state.finalResult.map((r, i) => `
+        <div class="rank ${i === 0 ? 'first' : ''}">
+          <span>${i === 0 ? '👑 ' : ''}${r.name}</span>
+          <span>${r.gloria} Gloria · ${r.territorios} territorios</span>
+          </div>`).join('')}
+      <p class="muted" style="margin-top:12px;">¡Brindad por quien ha ganado y otra por quien ha perdido!</p>
+    </div>
+  `;
+}
+
+function renderTimer() {
+  if (!state.phaseEndsAt) return '';
+  const secs = Math.max(0, Math.round((state.phaseEndsAt - Date.now()) / 1000));
+  return `<div class="timer">⏳ ${secs}s</div>`;
+}
+
+function renderBoard() {
+  const eras = [1, 2, 3];
+  return `<div class="card"><h2>Tablero</h2>
+    ${eras.map(e => {
+      const terrs = Object.values(state.territories).filter(t => t.era === e && t.open);
+      if (!terrs.length) return '';
+      return `<div class="territories" style="margin-bottom:8px;">
+        ${terrs.map(t => `
+          <div class="territory" style="border-color:${t.owner ? colorFor(t.owner) : '#4a3f5c'}">
+            <b>${t.name}</b><br>
+            <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'} · ${t.armies} 🛡️</span>
+          </div>`).join('')}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+setInterval(() => { if (state && state.phaseEndsAt) render(); }, 1000);
+render();
+</script>
+</body>
+</html>
