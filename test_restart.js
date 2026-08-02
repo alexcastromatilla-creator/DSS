@@ -97,12 +97,20 @@ async function run() {
   if (gloriaAfter !== 0) throw new Error('FALLO: la Gloria no se reseteó (' + gloriaAfter + ')');
   console.log('OK: Gloria reseteada a 0');
 
+  const hostAfterReset = host.state.players.find(p => p.id === host.id);
+  if ((hostAfterReset.resources || 0) !== 0) throw new Error('FALLO: los Recursos no se resetearon (' + hostAfterReset.resources + ')');
+  const levelsReset = hostAfterReset.troopLevels && hostAfterReset.troopLevels[1] === 1 && hostAfterReset.troopLevels[2] === 1 && hostAfterReset.troopLevels[3] === 1;
+  if (!levelsReset) throw new Error('FALLO: los niveles de tropa no se resetearon a 1: ' + JSON.stringify(hostAfterReset.troopLevels));
+  console.log('OK: Recursos (0) y niveles de tropa ({1,2,3}:1) reseteados correctamente.');
+
   const playersAfter = host.state.players.map(p => `${p.name}(${p.archetype})`);
   console.log('Jugadores conservados:', playersAfter);
   if (host.state.players.length !== 2) throw new Error('FALLO: no se conservaron los 2 jugadores');
   if (!host.state.players.every(p => p.archetype)) throw new Error('FALLO: se perdieron los arquetipos');
 
   const boardAfter = Object.keys(host.state.territories).sort().join(',');
+  const territoryCountAfter = Object.keys(host.state.territories).length;
+  if (territoryCountAfter !== 24) throw new Error('FALLO: el mapa regenerado no tiene 24 territorios (' + territoryCountAfter + ')');
   console.log('Mapa antes:', boardBefore);
   console.log('Mapa después:', boardAfter);
   // No es garantizado al 100% que cambien (podría tocar el mismo azar), pero lo normal es que varíe.

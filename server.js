@@ -3,7 +3,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { REGION_POOLS, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES } = require('./data');
+const { REGION_POOLS, TERRITORIES_PER_ERA, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES } = require('./data');
+
+// Tamaño del lienzo en el que se calculan las coordenadas x,y de cada territorio (ver
+// layoutTerritories). El cliente usa exactamente este mismo tamaño como viewBox del mapa SVG,
+// así las coordenadas que manda el servidor encajan sin reescalados raros.
+const MAP_W = 320;
+const MAP_H = 380;
 
 // Estos tiempos ya NO se muestran al jugador (el contador visible se quitó porque
 // se buggeaba) — son solo una red de seguridad interna para que una partida nunca
@@ -44,7 +50,10 @@ function newId() {
 }
 
 function makePlayer(id, name, isBot) {
-  return { id, name: name.slice(0, 20), archetype: null, reserve: 0, gloria: 0, characters: [], shield: false, isBot: !!isBot };
+  return {
+    id, name: name.slice(0, 20), archetype: null, reserve: 0, gloria: 0, characters: [], shield: false, isBot: !!isBot,
+    resources: 0, troopLevels: { 1: 1, 2: 1, 3: 1 },
+  };
 }
 
 function botDelay() {
@@ -76,13 +85,96 @@ function connectTerritories(territories, aId, bId) {
   if (!territories[bId].neighbors.includes(aId)) territories[bId].neighbors.push(aId);
 }
 
-// Genera un tablero nuevo y distinto cada partida: elige 4 regiones al azar de cada
-// pool de Era (data.js tiene 8 por Era) y las conecta con un grafo aleatorio —
-// conectado dentro de cada Era, más un puente al azar con la Era anterior.
+// Coloca cada territorio en (x,y) con un layout de fuerzas: todos los nodos se repelen entre sí
+// (como cargas iguales) y cada arista de vecindad tira como un muelle hacia una longitud ideal.
+// Tras unos cientos de iteraciones, un grafo conectado como el nuestro (árbol por Era + puentes
+// entre Eras) siempre acaba formando una única mancha orgánica y sin agujeros — ahí es donde nace
+// la forma de "país" del mapa, sin tener que dibujar ninguna costa a mano. Se calcula una sola vez
+// al generar el tablero; el resultado se guarda en cada territorio (t.x, t.y) y viaja tal cual al
+// cliente, que solo tiene que pintar, no recalcular nada.
+function layoutTerritories(territories, W, H) {
+  const ids = Object.keys(territories);
+  const n = ids.length;
+  if (!n) return;
+  const pos = {};
+  ids.forEach((id, i) => {
+    const angle = (i / n) * Math.PI * 2;
+    const radius = Math.min(W, H) * 0.26;
+    pos[id] = { x: W / 2 + Math.cos(angle) * radius, y: H / 2 + Math.sin(angle) * radius };
+  });
+  const vel = {};
+  ids.forEach((id) => { vel[id] = { x: 0, y: 0 }; });
+
+  const REPULSION = 1100;
+  const SPRING = 0.02;
+  const IDEAL_LEN = 46;
+  const DAMPING = 0.82;
+  const CENTER_PULL = 0.006;
+
+  for (let iter = 0; iter < 320; iter++) {
+    const force = {};
+    ids.forEach((id) => { force[id] = { x: 0, y: 0 }; });
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const a = pos[ids[i]], b = pos[ids[j]];
+        let dx = a.x - b.x, dy = a.y - b.y;
+        let distSq = dx * dx + dy * dy;
+        if (distSq < 4) { dx = ((i * 37 + j * 13) % 7) - 3 || 0.5; dy = ((i * 11 + j * 29) % 7) - 3 || 0.5; distSq = dx * dx + dy * dy; }
+        const dist = Math.sqrt(distSq);
+        const f = REPULSION / distSq;
+        const fx = (dx / dist) * f, fy = (dy / dist) * f;
+        force[ids[i]].x += fx; force[ids[i]].y += fy;
+        force[ids[j]].x -= fx; force[ids[j]].y -= fy;
+      }
+    }
+
+    ids.forEach((id) => {
+      (territories[id].neighbors || []).forEach((nId) => {
+        if (!pos[nId] || nId < id) return; // procesa cada arista una sola vez
+        const a = pos[id], b = pos[nId];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+        const f = SPRING * (dist - IDEAL_LEN);
+        const fx = (dx / dist) * f, fy = (dy / dist) * f;
+        force[id].x += fx; force[id].y += fy;
+        force[nId].x -= fx; force[nId].y -= fy;
+      });
+    });
+
+    ids.forEach((id) => {
+      force[id].x += (W / 2 - pos[id].x) * CENTER_PULL;
+      force[id].y += (H / 2 - pos[id].y) * CENTER_PULL;
+    });
+
+    ids.forEach((id) => {
+      vel[id].x = (vel[id].x + force[id].x) * DAMPING;
+      vel[id].y = (vel[id].y + force[id].y) * DAMPING;
+      pos[id].x += vel[id].x;
+      pos[id].y += vel[id].y;
+    });
+  }
+
+  const xs = ids.map((id) => pos[id].x), ys = ids.map((id) => pos[id].y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const margin = 34;
+  const spanX = Math.max(1, maxX - minX), spanY = Math.max(1, maxY - minY);
+  const scale = Math.min((W - margin * 2) / spanX, (H - margin * 2) / spanY, 1.7);
+  ids.forEach((id) => {
+    territories[id].x = Math.round((pos[id].x - minX) * scale + margin + (W - margin * 2 - spanX * scale) / 2);
+    territories[id].y = Math.round((pos[id].y - minY) * scale + margin + (H - margin * 2 - spanY * scale) / 2);
+  });
+}
+
+// Genera un tablero nuevo y distinto cada partida: elige TERRITORIES_PER_ERA regiones al azar de
+// cada pool de Era (data.js tiene el doble de candidatas por Era) y las conecta con un grafo
+// aleatorio — conectado dentro de cada Era, más un puente al azar con la Era anterior — y por
+// último calcula la disposición orgánica de todo el conjunto (layoutTerritories).
 function generateBoard() {
   const chosenByEra = {};
   for (const era of [1, 2, 3]) {
-    chosenByEra[era] = shuffle(REGION_POOLS[era]).slice(0, 4).map((r) => ({ ...r }));
+    chosenByEra[era] = shuffle(REGION_POOLS[era]).slice(0, TERRITORIES_PER_ERA).map((r) => ({ ...r }));
   }
 
   const territories = {};
@@ -100,13 +192,14 @@ function generateBoard() {
   for (const era of [1, 2, 3]) {
     const ids = chosenByEra[era].map((r) => r.id);
     const order = shuffle(ids);
-    // Árbol de expansión aleatorio: garantiza que las 4 regiones de la Era queden conectadas entre sí.
+    // Árbol de expansión aleatorio: garantiza que las regiones de la Era queden conectadas entre sí.
     for (let i = 1; i < order.length; i++) {
       const b = order[Math.floor(Math.random() * i)];
       connectTerritories(territories, order[i], b);
     }
-    // Una conexión extra al azar, para que el mapa no sea siempre un camino lineal.
-    if (ids.length > 2) {
+    // Un par de conexiones extra al azar, para que el mapa no sea siempre un camino lineal.
+    const extraEdges = Math.max(1, Math.floor(ids.length / 4));
+    for (let k = 0; k < extraEdges; k++) {
       const a = ids[Math.floor(Math.random() * ids.length)];
       const b = ids[Math.floor(Math.random() * ids.length)];
       connectTerritories(territories, a, b);
@@ -123,6 +216,7 @@ function generateBoard() {
     }
   }
 
+  layoutTerritories(territories, MAP_W, MAP_H);
   return territories;
 }
 
@@ -172,7 +266,11 @@ function ownedTerritories(room, playerId, era) {
   return Object.values(room.territories).filter((t) => t.owner === playerId && (era ? t.era === era : true));
 }
 function publicPlayer(p) {
-  return { id: p.id, name: p.name, archetype: p.archetype, gloria: p.gloria, reserve: p.reserve, characterCount: p.characters.length, isBot: !!p.isBot };
+  return {
+    id: p.id, name: p.name, archetype: p.archetype, gloria: p.gloria, reserve: p.reserve,
+    characterCount: p.characters.length, isBot: !!p.isBot,
+    resources: p.resources || 0, troopLevels: p.troopLevels || { 1: 1, 2: 1, 3: 1 },
+  };
 }
 
 function publicState(room) {
@@ -337,6 +435,24 @@ function botPickOrder(room, bot) {
   return { type: 'reclutar' };
 }
 
+// Los bots también invierten Recursos en mejorar tropas cuando les sobran — con algo de margen
+// (no gastan hasta el último Recurso) para que no monopolicen siempre la mejora más barata.
+function botMaybeLevelUp(room, bot) {
+  if (!bot.troopLevels) return;
+  if (Math.random() > 0.5) return;
+  const affordable = [];
+  for (let era = 1; era <= room.era; era++) {
+    const troopDef = TROOP_TYPES[era];
+    const currentLevel = bot.troopLevels[era] || 1;
+    const nextLevelDef = troopDef.levels.find((l) => l.level === currentLevel + 1);
+    if (nextLevelDef && (bot.resources || 0) >= nextLevelDef.cost + 3) affordable.push(era);
+  }
+  if (affordable.length) {
+    const era = affordable[Math.floor(Math.random() * affordable.length)];
+    actions.level_up_troop({ era }, { playerId: bot.id });
+  }
+}
+
 function scheduleBots(room) {
   const phase = room.phase;
   const bots = room.players.filter((p) => p.isBot);
@@ -347,6 +463,7 @@ function scheduleBots(room) {
       if (phase === 'orders') {
         const order = botPickOrder(r, bot);
         actions.submit_order({ order }, { playerId: bot.id });
+        botMaybeLevelUp(r, bot);
       } else if (phase === 'desafio') {
         const d = r.currentDesafio;
         let choice;
@@ -489,11 +606,26 @@ function resolveOrders(room) {
       const defenderPlayer = t.owner ? playerById(room, t.owner) : null;
       const dBonus = !!(defenderPlayer && (defenderPlayer.archetype === 'filosofo' || defenderPlayer.extraDefenseDie));
       const aBonus = p.archetype === 'explorador' && isBootstrap;
-      const aDice = roll(Math.min(amount, 3) + (aBonus ? 1 : 0));
-      const dDice = roll(Math.min(t.armies, 2) + (dBonus ? 1 : 0));
+      // Nivel de la tropa: source.era es de dónde salen las tropas atacantes (o t.era si vienen
+      // directamente de la reserva al desembarcar en un territorio libre); t.era es la tropa que
+      // defiende. Cada nivel por encima de 1 añade +1 dado; el nivel 3 además gana los empates.
+      const attackEra = source ? source.era : t.era;
+      const aTroopDef = TROOP_TYPES[attackEra] || TROOP_TYPES[1];
+      const aLevelNum = (p.troopLevels && p.troopLevels[attackEra]) || 1;
+      const aLevel = (aTroopDef.levels && aTroopDef.levels.find((l) => l.level === aLevelNum)) || { diceBonus: 0, winsTies: false };
+      const dTroopDef = TROOP_TYPES[t.era] || TROOP_TYPES[1];
+      const dLevelNum = (defenderPlayer && defenderPlayer.troopLevels && defenderPlayer.troopLevels[t.era]) || 1;
+      const dLevel = (dTroopDef.levels && dTroopDef.levels.find((l) => l.level === dLevelNum)) || { diceBonus: 0, winsTies: false };
+      const aDice = roll(Math.min(amount, 3) + (aBonus ? 1 : 0) + aLevel.diceBonus);
+      const dDice = roll(Math.min(t.armies, 2) + (dBonus ? 1 : 0) + dLevel.diceBonus);
       let aLoss = 0, dLoss = 0;
       const cmp = Math.min(aDice.length, dDice.length);
-      for (let i = 0; i < cmp; i++) { if (aDice[i] > dDice[i]) dLoss++; else aLoss++; }
+      for (let i = 0; i < cmp; i++) {
+        if (aDice[i] > dDice[i]) dLoss++;
+        else if (aDice[i] < dDice[i]) aLoss++;
+        else if (aLevel.winsTies && !dLevel.winsTies) dLoss++; // empate: normalmente gana quien defiende, salvo tropa de élite atacante
+        else aLoss++;
+      }
       if (p.shield && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); p.shield = false; resolveLog.push(`${p.name} usa el escudo de Diógenes y evita 1 baja.`); }
       if (p.archetype === 'guerrero' && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); resolveLog.push(`${p.name} (Guerrero) evita 1 baja en combate.`); }
       const survivors = amount - aLoss;
@@ -511,6 +643,14 @@ function resolveOrders(room) {
         resolveLog.push(`${p.name} ataca ${t.name}${originTxt} y fracasa. ${p.name} bebe ${aLoss} sorbo(s).`);
       }
     }
+  }
+
+  // Ingreso de Recursos: 1 por cada territorio que controles al final de la ronda — cuanto más
+  // mapa controlas, más rápido puedes mejorar tus tropas. Sin mensaje en el registro para no
+  // saturarlo; el total se ve siempre en tu propia ficha.
+  for (const p of room.players) {
+    const owned = ownedTerritories(room, p.id).length;
+    if (owned) p.resources = (p.resources || 0) + owned;
   }
 
   room.resolveLog = resolveLog;
@@ -647,6 +787,8 @@ const actions = {
       p.extraDefenseDie = false;
       p.hideOrders = false;
       p.doubleEra3 = false;
+      p.resources = 0;
+      p.troopLevels = { 1: 1, 2: 1, 3: 1 };
     }
     log(room, 'El anfitrión ha reiniciado la partida — nuevo mapa, mismos jugadores.');
     emitRoom(room);
@@ -659,6 +801,31 @@ const actions = {
     room.orders[ctx.playerId] = order;
     emitRoom(room);
     if (allOrdered(room)) resolveOrders(room);
+    return { ok: true };
+  },
+
+  // Mejora PARA SIEMPRE (mientras dure la partida) el nivel de un tipo de tropa: sube el bonus de
+  // dados de combate de ESE jugador para todas las tropas de esa Era, presentes y futuras. Cuesta
+  // Recursos (crecientes por nivel) y solo se puede hacer sobre una Era ya empezada. No consume el
+  // turno/orden de la ronda — es una decisión aparte, se puede hacer en cualquier momento.
+  level_up_troop({ era }, ctx) {
+    const room = rooms[playerRoom[ctx.playerId]];
+    if (!room) return { error: 'Sala no encontrada.' };
+    const eraNum = parseInt(era, 10);
+    const troopDef = TROOP_TYPES[eraNum];
+    if (!troopDef) return { error: 'Tipo de tropa no válido.' };
+    if (eraNum > room.era) return { error: 'Esa Era todavía no ha empezado.' };
+    const p = playerById(room, ctx.playerId);
+    if (!p) return { error: 'Jugador no encontrado.' };
+    if (!p.troopLevels) p.troopLevels = { 1: 1, 2: 1, 3: 1 };
+    const currentLevel = p.troopLevels[eraNum] || 1;
+    const nextLevelDef = troopDef.levels.find((l) => l.level === currentLevel + 1);
+    if (!nextLevelDef) return { error: 'Esa tropa ya está al nivel máximo.' };
+    if ((p.resources || 0) < nextLevelDef.cost) return { error: `Te faltan Recursos (necesitas ${nextLevelDef.cost}, tienes ${p.resources || 0}).` };
+    p.resources -= nextLevelDef.cost;
+    p.troopLevels[eraNum] = currentLevel + 1;
+    log(room, `${p.name} mejora sus ${troopName(eraNum, 2)} a nivel ${currentLevel + 1}: ${nextLevelDef.name}.`);
+    emitRoom(room);
     return { ok: true };
   },
 

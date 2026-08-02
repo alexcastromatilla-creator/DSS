@@ -72,6 +72,10 @@ async function run() {
   if (startRes.error) throw new Error('start_game falló: ' + startRes.error);
   await wait(300);
 
+  const territoryCount = Object.keys(human.state.territories).length;
+  console.log('Territorios generados:', territoryCount, '(esperado 24)');
+  if (territoryCount !== 24) throw new Error('FALLO: se esperaban 24 territorios, hay ' + territoryCount);
+
   let iterations = 0;
   let lastPhaseKey = '';
   while (human.state.phase !== 'fin' && iterations < 400) {
@@ -108,6 +112,7 @@ async function run() {
       } else order = { type: 'reclutar' };
       const or = await apiPost('submit_order', { playerId: human.id, order });
       if (or.error) console.log('ERROR submit_order humano', or);
+      if (Math.random() < 0.3) await apiPost('level_up_troop', { playerId: human.id, era: human.state.era });
     } else if (phase === 'resolve' || phase === 'simposio') {
       console.log(`[${phase}]`, human.state.resolveLog || human.state.simposioResult);
       await apiPost('continue', { playerId: human.id });
@@ -129,6 +134,8 @@ async function run() {
   console.log('resultado final:', JSON.stringify(human.state.finalResult, null, 2));
 
   if (human.state.phase !== 'fin') { console.error('FALLO: no llegó a "fin" (posible bot colgado)'); process.exit(1); }
+  const anyBotLeveledUp = human.state.players.some(p => p.isBot && p.troopLevels && Object.values(p.troopLevels).some(l => l > 1));
+  console.log('¿Algún bot mejoró alguna tropa durante la partida (botMaybeLevelUp)?', anyBotLeveledUp);
   console.log('TEST OK: partida en solitario contra 2 bots completada sin errores.');
   process.exit(0);
 }

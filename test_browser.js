@@ -62,6 +62,14 @@ const BASE = 'http://127.0.0.1:3000';
   console.log('Los 3 ven la pantalla de órdenes directamente (sin trivia).');
 
   await p1.waitForTimeout(500);
+
+  const troopPanelVisible = await p1.$$eval('#screen h2', els => els.some(h => h.textContent.includes('tropas y mejoras')));
+  console.log('Panel de tropas y mejoras visible:', troopPanelVisible);
+  if (!troopPanelVisible) throw new Error('FALLO: no se ve el panel de tropas y mejoras en la pantalla de órdenes');
+  const roomBarText = await p1.$eval('#roomBar', el => el.textContent);
+  console.log('Barra de sala (debe incluir Recursos):', roomBarText);
+  if (!roomBarText.includes('💰')) throw new Error('FALLO: la barra de sala no muestra los Recursos');
+
   console.log('errores de consola hasta ahora:', consoleErrors);
 
   for (const p of pages) {

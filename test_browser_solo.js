@@ -82,6 +82,16 @@ const BASE = 'http://127.0.0.1:3000';
   if (!hasBoard) throw new Error('El tablero no se muestra en la pantalla de órdenes');
   console.log('Tablero visible junto al formulario de órdenes.');
 
+  console.log('--- Comprobando el panel de tropas y mejoras ---');
+  const troopPanelVisible = await page.$$eval('#screen h2', els => els.some(h => h.textContent.includes('tropas y mejoras')));
+  if (!troopPanelVisible) throw new Error('FALLO: no se ve el panel de tropas y mejoras');
+  const levelRowCount = await page.$$eval('.level-row', els => els.length);
+  console.log('Filas de nivel de tropa mostradas (esperado 3, una por nivel):', levelRowCount);
+  if (levelRowCount !== 3) throw new Error('FALLO: deberían verse las 3 filas de nivel (1,2,3) de la tropa de Era I');
+  const roomBarResources = await page.$eval('#roomBar', el => el.textContent);
+  if (!roomBarResources.includes('💰')) throw new Error('FALLO: la barra de sala no muestra los Recursos');
+  console.log('OK: panel de tropas y mejoras y Recursos visibles.');
+
   console.log('--- Comprobando que el tablero muestra unidades visuales por territorio (no solo un número) ---');
   const eraLabel = await page.$('.era-label');
   if (!eraLabel) throw new Error('Falta la etiqueta de Era sobre el grupo de territorios');
@@ -91,26 +101,34 @@ const BASE = 'http://127.0.0.1:3000';
   const badgeText = await page.$eval('.unit-icons', el => el.textContent);
   console.log('Ejemplo de insignia de unidades:', badgeText);
 
-  console.log('--- Comprobando el mapa fraccionado (fragmentos de terreno, sin círculos) ---');
+  console.log('--- Comprobando el mapa del país completo (24 territorios, niebla, sin círculos) ---');
   const circleCount = await page.$$eval('svg.map-svg circle', els => els.length);
   console.log('Círculos en el mapa (debe ser 0; el monumento de fondo puede tener los suyos aparte):', circleCount);
   if (circleCount) throw new Error('El mapa todavía dibuja círculos, y ya no deberían estar');
-  const territoryCount = await page.$$eval('.territory', els => els.length);
-  const zoneIds = await page.$$eval('.zone-cell', els => [...new Set(els.map(e => e.dataset.terr))].length);
-  console.log('Fragmentos de terreno distintos:', zoneIds, '| Territorios listados:', territoryCount);
-  if (!zoneIds) throw new Error('El mapa no tiene ningún fragmento de terreno pintado');
-  if (zoneIds !== territoryCount) throw new Error('El nº de fragmentos del mapa no coincide con el nº de territorios listados');
+  const territoryCardIds = await page.$$eval('.territory', els => els.map(e => e.id.replace('terr-', '')));
+  const zoneIdList = await page.$$eval('.zone-cell', els => [...new Set(els.map(e => e.dataset.terr))]);
+  console.log('Fragmentos de terreno distintos en el mapa:', zoneIdList.length, '(esperado 24, el país entero) | Territorios con ficha (abiertos en Era I):', territoryCardIds.length, '(esperado 8)');
+  if (zoneIdList.length !== 24) throw new Error('FALLO: el mapa debería pintar los 24 territorios de la partida (abiertos + en niebla), pinta ' + zoneIdList.length);
+  if (territoryCardIds.length !== 8) throw new Error('FALLO: se esperaban 8 territorios con ficha detallada (Era I), hay ' + territoryCardIds.length);
+  if (!territoryCardIds.every((id) => zoneIdList.includes(id))) throw new Error('FALLO: algún territorio abierto (con ficha) no aparece pintado en el mapa');
   const zoneRectCount = await page.$$eval('svg rect.zone-cell', els => els.length);
   console.log('Celdas de terreno pintadas:', zoneRectCount);
-  if (zoneRectCount < 10) throw new Error('El mapa no pinta el terreno de fondo (zonas de color por territorio)');
+  if (zoneRectCount < 100) throw new Error('El mapa no pinta el terreno de fondo (zonas de color por territorio)');
   const borderCount = await page.$$eval('svg line.zone-border', els => els.length);
   console.log('Líneas de frontera entre fragmentos:', borderCount);
   if (!borderCount) throw new Error('El mapa no traza ninguna frontera entre fragmentos de territorio distintos');
   const legend = await page.$('.map-legend');
   if (!legend) throw new Error('Falta la leyenda del mapa');
+  const lockedCount = await page.$$eval('svg.map-svg text', els => els.filter(e => e.textContent.includes('🔒')).length);
+  console.log('Territorios en niebla (con candado) dibujados en el mapa:', lockedCount, '(esperado 16 = 24 - 8 abiertos)');
+  if (lockedCount !== 16) throw new Error('FALLO: se esperaban 16 territorios en niebla en Era I, hay ' + lockedCount);
 
   console.log('--- Tocando un fragmento del mapa: debe resaltar su ficha en la lista ---');
-  const firstZone = await page.$('.zone-cell');
+  // OJO: el primer .zone-cell en el DOM puede caer en un territorio todavía en niebla (no tiene
+  // ficha que resaltar, solo un aviso al tocarlo) — para probar el resaltado hace falta tocar
+  // específicamente una celda de un territorio ABIERTO (con ficha), no cualquier celda del mapa.
+  const firstZone = await page.$(`.zone-cell[data-terr="${territoryCardIds[0]}"]`);
+  if (!firstZone) throw new Error('No se encontró ninguna celda del mapa para el primer territorio abierto');
   await firstZone.click();
   const flashed = await page.waitForSelector('.territory.flash', { timeout: 1500 }).catch(() => null);
   if (!flashed) throw new Error('Tocar un fragmento del mapa no resalta su territorio correspondiente en la lista');

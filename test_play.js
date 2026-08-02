@@ -88,6 +88,17 @@ async function run() {
   console.log('start_game ->', startRes);
   await wait(300);
 
+  const territoryCount = Object.keys(players[0].state.territories).length;
+  console.log('Territorios generados en el mapa:', territoryCount, '(esperado 24)');
+  if (territoryCount !== 24) throw new Error('FALLO: se esperaban 24 territorios, hay ' + territoryCount);
+  const openAtStart = Object.values(players[0].state.territories).filter((t) => t.open).length;
+  console.log('Abiertos en Era I al empezar:', openAtStart, '(esperado 8)');
+  if (openAtStart !== 8) throw new Error('FALLO: se esperaban 8 territorios abiertos en Era I, hay ' + openAtStart);
+  const everyoneHasResourcesAndLevels = players[0].state.players.every((p) =>
+    typeof p.resources === 'number' && p.troopLevels && p.troopLevels[1] === 1 && p.troopLevels[2] === 1 && p.troopLevels[3] === 1);
+  if (!everyoneHasResourcesAndLevels) throw new Error('FALLO: algún jugador no tiene Recursos/niveles de tropa iniciales correctos');
+  console.log('OK: Recursos y niveles de tropa iniciales presentes para los 3 jugadores.');
+
   let iterations = 0;
   let lastPhaseKey = '';
   while (players[0].state.phase !== 'fin' && iterations < 300) {
@@ -132,6 +143,10 @@ async function run() {
         }
         const r = await apiPost('submit_order', { playerId: p.id, order });
         if (r.error) console.log('ERROR submit_order', p.name, order, r);
+        // De vez en cuando, también intenta mejorar una tropa si le sobran Recursos — no pasa
+        // nada si falla por falta de fondos, solo añade cobertura orgánica de level_up_troop
+        // dentro de una partida completa (el camino feliz ya se comprueba a fondo aparte).
+        if (Math.random() < 0.3) await apiPost('level_up_troop', { playerId: p.id, era: p.state.era });
       }
     } else if (phase === 'resolve' || phase === 'simposio') {
       console.log(`[${phase}] Era ${players[0].state.era} Ronda ${players[0].state.round}`, players[0].state.resolveLog || players[0].state.simposioResult);
@@ -165,6 +180,13 @@ async function run() {
   }
   const badGloria = players[0].state.finalResult.some(r => typeof r.gloria !== 'number' || isNaN(r.gloria));
   if (badGloria) { console.error('FALLO: gloria inválida en el resultado final'); process.exit(1); }
+
+  const finalTerritoryCount = Object.keys(players[0].state.territories).length;
+  if (finalTerritoryCount !== 24) { console.error('FALLO: el nº de territorios cambió durante la partida (' + finalTerritoryCount + ')'); process.exit(1); }
+  const badResources = players[0].state.players.some(p => typeof p.resources !== 'number' || p.resources < 0);
+  if (badResources) { console.error('FALLO: algún jugador terminó con Recursos inválidos'); process.exit(1); }
+  console.log('Niveles de tropa finales:', players[0].state.players.map(p => ({ name: p.name, troopLevels: p.troopLevels })));
+  console.log('OK: 24 territorios y Recursos válidos se mantienen hasta el final.');
   console.log('TEST OK: la partida completa se resolvió sin errores.');
   process.exit(0);
 }

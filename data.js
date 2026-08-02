@@ -1,8 +1,9 @@
 // Datos del juego: pools de regiones (el tablero se genera al azar cada partida),
-// tropas por Época, personajes, desafíos y monumentos.
+// tropas por Época (con niveles mejorables), personajes, desafíos y monumentos.
 
-// Pool de posibles regiones por Era — cada partida se eligen 4 al azar de cada pool
-// y se generan conexiones (vecindad) también al azar, así el tablero cambia cada vez.
+// Pool de posibles regiones por Era — cada partida se eligen 8 al azar de cada pool de 12
+// y se generan conexiones (vecindad) también al azar, así el mapa cambia cada vez aunque
+// siempre acaba formando una única masa de tierra conectada (ver generateBoard en server.js).
 const REGION_POOLS = {
   1: [
     { id: 'atenas', name: 'Atenas', region: 'Grecia', resource: 'sabiduria', icon: '🏛️' },
@@ -13,6 +14,10 @@ const REGION_POOLS = {
     { id: 'creta', name: 'Creta (Cnosos)', region: 'Creta', resource: 'cultura', icon: '🐂' },
     { id: 'efeso', name: 'Éfeso', region: 'Anatolia', resource: 'sabiduria', icon: '🏺' },
     { id: 'persepolis', name: 'Persépolis', region: 'Persia', resource: 'poder', icon: '🔥' },
+    { id: 'siracusa', name: 'Siracusa', region: 'Sicilia', resource: 'comercio', icon: '🌋' },
+    { id: 'tebas', name: 'Tebas', region: 'Egipto', resource: 'sabiduria', icon: '🐍' },
+    { id: 'rodas', name: 'Rodas', region: 'Grecia', resource: 'poder', icon: '⚓' },
+    { id: 'gades', name: 'Gades (Cádiz)', region: 'Iberia', resource: 'cultura', icon: '🐚' },
   ],
   2: [
     { id: 'bagdad', name: 'Bagdad', region: 'Mesopotamia', resource: 'sabiduria', icon: '🕌' },
@@ -23,6 +28,10 @@ const REGION_POOLS = {
     { id: 'delhi', name: 'Delhi', region: 'India', resource: 'sabiduria', icon: '🐘' },
     { id: 'kioto', name: 'Kioto', region: 'Japón', resource: 'cultura', icon: '⛩️' },
     { id: 'tombuctu', name: 'Tombuctú', region: 'Malí', resource: 'sabiduria', icon: '📖' },
+    { id: 'isfahan', name: 'Isfahán', region: 'Persia', resource: 'cultura', icon: '🌷' },
+    { id: 'cairo', name: 'El Cairo', region: 'Egipto', resource: 'comercio', icon: '🐪' },
+    { id: 'novgorod', name: 'Nóvgorod', region: 'Rus de Kiev', resource: 'sabiduria', icon: '🛶' },
+    { id: 'mogadiscio', name: 'Mogadiscio', region: 'Cuerno de África', resource: 'poder', icon: '🌴' },
   ],
   3: [
     { id: 'florencia', name: 'Florencia', region: 'Italia', resource: 'cultura', icon: '🎨' },
@@ -33,8 +42,15 @@ const REGION_POOLS = {
     { id: 'amsterdam', name: 'Ámsterdam', region: 'Provincias Unidas', resource: 'comercio', icon: '🚢' },
     { id: 'lisboa', name: 'Lisboa', region: 'Portugal', resource: 'comercio', icon: '🧭' },
     { id: 'cusco', name: 'Cusco', region: 'Imperio Inca', resource: 'poder', icon: '☀️' },
+    { id: 'venecia', name: 'Venecia', region: 'Italia', resource: 'comercio', icon: '🌊' },
+    { id: 'viena', name: 'Viena', region: 'Sacro Imperio', resource: 'poder', icon: '🎻' },
+    { id: 'petersburgo', name: 'San Petersburgo', region: 'Rusia', resource: 'cultura', icon: '❄️' },
+    { id: 'bahia', name: 'Salvador de Bahía', region: 'Brasil colonial', resource: 'poder', icon: '🥁' },
   ],
 };
+
+// Cuántos territorios de cada pool se abren por Era (24 en total). Ver server.js#generateBoard.
+const TERRITORIES_PER_ERA = 8;
 
 const ERA_INFO = [
   null,
@@ -55,12 +71,35 @@ const ERA_INFO = [
   },
 ];
 
-// Tropas por Época: cambian de nombre e icono, y los territorios abiertos en Épocas
-// más tardías empiezan con más guarnición — la "tecnología militar" progresa.
+// Tropas por Época: cambian de nombre e icono, y los territorios abiertos en Épocas más
+// tardías empiezan con más guarnición. Cada tipo de tropa tiene 3 niveles — se mejoran para
+// SIEMPRE (toda tropa de ese tipo, la que ya tienes y la que consigas después) gastando
+// Recursos (ver server.js: cada territorio que controlas genera 1 Recurso por ronda).
 const TROOP_TYPES = {
-  1: { singular: 'legión', plural: 'legiones', icon: '🛡️', garrison: 2 },
-  2: { singular: 'jinete', plural: 'jinetes', icon: '🐎', garrison: 3 },
-  3: { singular: 'regimiento', plural: 'regimientos', icon: '🔫', garrison: 4 },
+  1: {
+    singular: 'legión', plural: 'legiones', icon: '🛡️', garrison: 2,
+    levels: [
+      { level: 1, name: 'Legión', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
+      { level: 2, name: 'Legión veterana', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
+      { level: 3, name: 'Legión de élite', desc: 'Igual que veterana, y además gana los empates en combate (normalmente los gana quien defiende).', diceBonus: 1, winsTies: true, cost: 16 },
+    ],
+  },
+  2: {
+    singular: 'jinete', plural: 'jinetes', icon: '🐎', garrison: 3,
+    levels: [
+      { level: 1, name: 'Jinete', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
+      { level: 2, name: 'Jinete veterano', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
+      { level: 3, name: 'Jinete de élite', desc: 'Igual que veterano, y además gana los empates en combate.', diceBonus: 1, winsTies: true, cost: 16 },
+    ],
+  },
+  3: {
+    singular: 'regimiento', plural: 'regimientos', icon: '🔫', garrison: 4,
+    levels: [
+      { level: 1, name: 'Regimiento', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
+      { level: 2, name: 'Regimiento veterano', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
+      { level: 3, name: 'Regimiento de élite', desc: 'Igual que veterano, y además gana los empates en combate.', diceBonus: 1, winsTies: true, cost: 16 },
+    ],
+  },
 };
 
 const ARCHETYPES = {
@@ -122,4 +161,4 @@ const DESAFIOS = [
   },
 ];
 
-module.exports = { REGION_POOLS, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES };
+module.exports = { REGION_POOLS, TERRITORIES_PER_ERA, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES };
