@@ -1,28 +1,67 @@
-// Datos del juego: territorios, personajes, trivia y desafíos.
+// Datos del juego: pools de regiones (el tablero se genera al azar cada partida),
+// tropas por Época, personajes, desafíos y monumentos.
 
-const TERRITORIES = {
-  atenas:       { name: 'Atenas',        era: 1, region: 'Grecia',           resource: 'sabiduria', icon: '🏛️', neighbors: ['esparta', 'alejandria'] },
-  esparta:      { name: 'Esparta',       era: 1, region: 'Grecia',           resource: 'poder',      icon: '🛡️', neighbors: ['atenas', 'roma'] },
-  roma:         { name: 'Roma',          era: 1, region: 'Italia',           resource: 'poder',      icon: '🦅', neighbors: ['esparta', 'alejandria', 'florencia'] },
-  alejandria:   { name: 'Alejandría',    era: 1, region: 'Egipto',           resource: 'sabiduria', icon: '📚', neighbors: ['atenas', 'roma', 'bagdad'] },
-
-  bagdad:       { name: 'Bagdad',        era: 2, region: 'Mesopotamia',      resource: 'sabiduria', icon: '🕌', neighbors: ['alejandria', 'samarcanda'] },
-  cordoba:      { name: 'Córdoba',       era: 2, region: 'Al-Ándalus',       resource: 'cultura',    icon: '🌙', neighbors: ['roma', 'tenochtitlan'] },
-  samarcanda:   { name: 'Samarcanda',    era: 2, region: 'Asia Central',     resource: 'comercio',   icon: '🐫', neighbors: ['bagdad', 'changan'] },
-  changan:      { name: "Chang'an",      era: 2, region: 'China',           resource: 'comercio',   icon: '🏮', neighbors: ['samarcanda'] },
-
-  florencia:    { name: 'Florencia',     era: 3, region: 'Italia',           resource: 'cultura',    icon: '🎨', neighbors: ['roma', 'paris'] },
-  paris:        { name: 'París',         era: 3, region: 'Francia',         resource: 'cultura',    icon: '⚜️', neighbors: ['florencia', 'tenochtitlan'] },
-  tenochtitlan: { name: 'Tenochtitlan',  era: 3, region: 'Imperio Azteca',   resource: 'poder',      icon: '🌞', neighbors: ['cordoba', 'paris', 'potosi'] },
-  potosi:       { name: 'Potosí',        era: 3, region: 'Imperio Inca',     resource: 'comercio',   icon: '⛰️', neighbors: ['tenochtitlan'] },
+// Pool de posibles regiones por Era — cada partida se eligen 4 al azar de cada pool
+// y se generan conexiones (vecindad) también al azar, así el tablero cambia cada vez.
+const REGION_POOLS = {
+  1: [
+    { id: 'atenas', name: 'Atenas', region: 'Grecia', resource: 'sabiduria', icon: '🏛️' },
+    { id: 'esparta', name: 'Esparta', region: 'Grecia', resource: 'poder', icon: '🛡️' },
+    { id: 'roma', name: 'Roma', region: 'Italia', resource: 'poder', icon: '🦅' },
+    { id: 'alejandria', name: 'Alejandría', region: 'Egipto', resource: 'sabiduria', icon: '📚' },
+    { id: 'cartago', name: 'Cartago', region: 'Norte de África', resource: 'comercio', icon: '⛵' },
+    { id: 'creta', name: 'Creta (Cnosos)', region: 'Creta', resource: 'cultura', icon: '🐂' },
+    { id: 'efeso', name: 'Éfeso', region: 'Anatolia', resource: 'sabiduria', icon: '🏺' },
+    { id: 'persepolis', name: 'Persépolis', region: 'Persia', resource: 'poder', icon: '🔥' },
+  ],
+  2: [
+    { id: 'bagdad', name: 'Bagdad', region: 'Mesopotamia', resource: 'sabiduria', icon: '🕌' },
+    { id: 'cordoba', name: 'Córdoba', region: 'Al-Ándalus', resource: 'cultura', icon: '🌙' },
+    { id: 'samarcanda', name: 'Samarcanda', region: 'Asia Central', resource: 'comercio', icon: '🐫' },
+    { id: 'changan', name: "Chang'an", region: 'China', resource: 'comercio', icon: '🏮' },
+    { id: 'constantinopla', name: 'Constantinopla', region: 'Bizancio', resource: 'poder', icon: '⚜️' },
+    { id: 'delhi', name: 'Delhi', region: 'India', resource: 'sabiduria', icon: '🐘' },
+    { id: 'kioto', name: 'Kioto', region: 'Japón', resource: 'cultura', icon: '⛩️' },
+    { id: 'tombuctu', name: 'Tombuctú', region: 'Malí', resource: 'sabiduria', icon: '📖' },
+  ],
+  3: [
+    { id: 'florencia', name: 'Florencia', region: 'Italia', resource: 'cultura', icon: '🎨' },
+    { id: 'paris', name: 'París', region: 'Francia', resource: 'cultura', icon: '⚜️' },
+    { id: 'tenochtitlan', name: 'Tenochtitlan', region: 'Imperio Azteca', resource: 'poder', icon: '🌞' },
+    { id: 'potosi', name: 'Potosí', region: 'Imperio Inca', resource: 'comercio', icon: '⛰️' },
+    { id: 'londres', name: 'Londres', region: 'Inglaterra', resource: 'comercio', icon: '👑' },
+    { id: 'amsterdam', name: 'Ámsterdam', region: 'Provincias Unidas', resource: 'comercio', icon: '🚢' },
+    { id: 'lisboa', name: 'Lisboa', region: 'Portugal', resource: 'comercio', icon: '🧭' },
+    { id: 'cusco', name: 'Cusco', region: 'Imperio Inca', resource: 'poder', icon: '☀️' },
+  ],
 };
 
 const ERA_INFO = [
   null,
-  { titulo: 'Era I — El Mediterráneo Antiguo', flavor: 'Atenas discute, Esparta entrena, Roma construye legiones y Alejandría atesora el saber del mundo conocido. La partida por la Antigüedad clásica empieza ahora.' },
-  { titulo: 'Era II — Las Rutas de Oriente', flavor: 'Se abren las Rutas de la Seda: Bagdad, Córdoba, Samarcanda y Chang\'an conectan el Mediterráneo con Asia. El comercio y el saber valen tanto como las armas.' },
-  { titulo: 'Era III — Europa Moderna y el Nuevo Mundo', flavor: 'Florencia y París viven el Renacimiento y la Ilustración, mientras el Atlántico se abre hacia Tenochtitlan y Potosí. La última campaña decide la Gloria.' },
+  {
+    titulo: 'Era I — El Mediterráneo Antiguo',
+    flavor: 'Grecia discute, Roma construye legiones y Egipto atesora el saber del mundo conocido. La partida por la Antigüedad clásica empieza ahora — el mapa de esta partida es nuevo, nadie lo ha jugado antes.',
+    monumento: 'monumento_era1.png',
+  },
+  {
+    titulo: 'Era II — Las Rutas de Oriente',
+    flavor: 'Se abren las Rutas de la Seda: nuevas ciudades conectan el Mediterráneo con Asia y África. El comercio y el saber valen tanto como las armas.',
+    monumento: 'monumento_era2.png',
+  },
+  {
+    titulo: 'Era III — Europa Moderna y el Nuevo Mundo',
+    flavor: 'Europa vive el Renacimiento y la Ilustración, mientras el Atlántico se abre hacia el Nuevo Mundo. La última campaña decide la Gloria.',
+    monumento: 'monumento_era3.png',
+  },
 ];
+
+// Tropas por Época: cambian de nombre e icono, y los territorios abiertos en Épocas
+// más tardías empiezan con más guarnición — la "tecnología militar" progresa.
+const TROOP_TYPES = {
+  1: { singular: 'legión', plural: 'legiones', icon: '🛡️', garrison: 2 },
+  2: { singular: 'jinete', plural: 'jinetes', icon: '🐎', garrison: 3 },
+  3: { singular: 'regimiento', plural: 'regimientos', icon: '🔫', garrison: 4 },
+};
 
 const ARCHETYPES = {
   filosofo: { name: 'El Filósofo', desc: '+1 dado siempre que defiendes un territorio.', icon: '🦉', color: '#8e7cc3' },
@@ -36,48 +75,25 @@ const ARCHETYPES = {
 const BOT_NAMES = ['Pericles', 'Boudica', 'Atila', 'Nefertiti', 'Zenobia', 'Amanirenas', 'Wu Zetian', 'Saladino'];
 
 // Mazos de personajes por Era. Los marcados con "coded" tienen efecto mecánico real.
+// "portrait" apunta a la ilustración en public/images/.
 const CHARACTER_DECKS = {
   1: [
-    { id: 'cesar', name: 'Julio César', region: 'Roma', icon: '🏛️', flavor: 'Al reclutarlo, robas 1 legión de un territorio rival (si existe).', coded: 'steal_army' },
-    { id: 'diogenes', name: 'Diógenes de Sinope', region: 'Grecia', icon: '🏺', flavor: 'Una vez por partida, ignoras la primera derrota en combate sin perder legiones.', coded: 'shield_once' },
-    { id: 'cleopatra', name: 'Cleopatra VII', region: 'Egipto', icon: '👑', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-    { id: 'hipatia', name: 'Hipatia de Alejandría', region: 'Egipto', icon: '📜', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'cesar', name: 'Julio César', region: 'Roma', icon: '🏛️', portrait: 'cesar.png', flavor: 'Al reclutarlo, robas 1 legión de un territorio rival (si existe).', coded: 'steal_army' },
+    { id: 'diogenes', name: 'Diógenes de Sinope', region: 'Grecia', icon: '🏺', portrait: 'diogenes.png', flavor: 'Una vez por partida, ignoras la primera derrota en combate sin perder legiones.', coded: 'shield_once' },
+    { id: 'cleopatra', name: 'Cleopatra VII', region: 'Egipto', icon: '👑', portrait: 'cleopatra.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'hipatia', name: 'Hipatia de Alejandría', region: 'Egipto', icon: '📜', portrait: 'hipatia.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
   2: [
-    { id: 'gengis', name: 'Genghis Khan', region: 'Estepas', icon: '🏹', flavor: 'Al reclutarlo, cada rival pierde 1 legión de su territorio más débil.', coded: 'weaken_rivals' },
-    { id: 'avicena', name: 'Avicena (Ibn Sina)', region: 'Persia', icon: '⚗️', flavor: '+1 dado permanente al defender (se acumula con El Filósofo).', coded: 'extra_defense_die' },
-    { id: 'marcopolo', name: 'Marco Polo', region: 'Venecia / Asia', icon: '🐫', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-    { id: 'confucio', name: 'Confucio', region: 'China', icon: '🎋', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'gengis', name: 'Genghis Khan', region: 'Estepas', icon: '🏹', portrait: 'gengis.png', flavor: 'Al reclutarlo, cada rival pierde 1 legión de su territorio más débil.', coded: 'weaken_rivals' },
+    { id: 'avicena', name: 'Avicena (Ibn Sina)', region: 'Persia', icon: '⚗️', portrait: 'avicena.png', flavor: '+1 dado permanente al defender (se acumula con El Filósofo).', coded: 'extra_defense_die' },
+    { id: 'marcopolo', name: 'Marco Polo', region: 'Venecia / Asia', icon: '🐫', portrait: 'marcopolo.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'confucio', name: 'Confucio', region: 'China', icon: '🎋', portrait: 'confucio.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
   3: [
-    { id: 'maquiavelo', name: 'Nicolás Maquiavelo', region: 'Italia', icon: '🎭', flavor: 'Tus órdenes nunca pueden ser reveladas por un Espía rival.', coded: 'order_hidden' },
-    { id: 'isabel', name: 'Isabel I de Castilla', region: 'España', icon: '⛵', flavor: 'Al final de la partida, tus territorios de la Era III valen doble Gloria.', coded: 'double_era3_score' },
-    { id: 'voltaire', name: 'Voltaire', region: 'Francia', icon: '🖋️', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-    { id: 'moctezuma', name: 'Moctezuma II', region: 'Imperio Azteca', icon: '🪶', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-  ],
-};
-
-const TRIVIA = {
-  1: [
-    { q: '¿Qué filósofo ateniense fue condenado a beber cicuta?', options: ['Sócrates', 'Platón', 'Aristóteles', 'Pitágoras'], correct: 0 },
-    { q: '¿Cómo se llama el sistema de gobierno ateniense basado en la participación directa de los ciudadanos?', options: ['Democracia directa', 'Oligarquía', 'Tiranía', 'República federal'], correct: 0 },
-    { q: '¿En qué batalla resistieron los 300 espartanos de Leónidas al ejército persa?', options: ['Maratón', 'Salamina', 'Termópilas', 'Platea'], correct: 2 },
-    { q: '"El Banquete" de Platón trata, en el fondo, sobre...', options: ['La guerra', 'El amor', 'La economía', 'La agricultura'], correct: 1 },
-    { q: '¿Qué emperador dividió el Imperio romano en una Tetrarquía?', options: ['Constantino', 'Diocleciano', 'Nerón', 'Adriano'], correct: 1 },
-  ],
-  2: [
-    { q: '¿Qué ruta comercial conectaba China con el Mediterráneo?', options: ['Ruta de la Seda', 'Ruta de las Especias', 'Camino de Santiago', 'Ruta del Ámbar'], correct: 0 },
-    { q: '¿Cómo se llamaba la institución de traducción y estudio fundada en Bagdad en el siglo VIII?', options: ['Biblioteca de Alejandría', 'Casa de la Sabiduría', 'Academia de Platón', 'Museion'], correct: 1 },
-    { q: '¿Qué imperio, el más extenso en territorio contiguo de la historia, fundó Genghis Khan?', options: ['Imperio Otomano', 'Imperio Persa', 'Imperio Mongol', 'Imperio Bizantino'], correct: 2 },
-    { q: '¿Qué viajero veneciano narró su viaje a la corte del Gran Kan?', options: ['Marco Polo', 'Ibn Battuta', 'Vasco da Gama', 'Américo Vespucio'], correct: 0 },
-    { q: '¿Qué califato tuvo su capital en Córdoba durante Al-Ándalus?', options: ['Califato Abasí', 'Califato Omeya de Córdoba', 'Califato Fatimí', 'Sultanato de Delhi'], correct: 1 },
-  ],
-  3: [
-    { q: '¿Quién pintó "La Gioconda" y diseñó también máquinas voladoras?', options: ['Miguel Ángel', 'Rafael', 'Leonardo da Vinci', 'Botticelli'], correct: 2 },
-    { q: '¿Qué obra de Maquiavelo explica cómo debe gobernar un príncipe?', options: ['El Príncipe', 'Utopía', 'El Leviatán', 'Los Discursos'], correct: 0 },
-    { q: '¿En qué año llegó Cristóbal Colón a América?', options: ['1492', '1453', '1521', '1488'], correct: 0 },
-    { q: '¿Qué filósofo ilustrado defendió la separación de poderes en "El espíritu de las leyes"?', options: ['Voltaire', 'Rousseau', 'Montesquieu', 'Diderot'], correct: 2 },
-    { q: '¿Cómo se llamaba el imperio mesoamericano gobernado por Moctezuma II?', options: ['Imperio Inca', 'Imperio Azteca', 'Imperio Maya', 'Imperio Tolteca'], correct: 1 },
+    { id: 'maquiavelo', name: 'Nicolás Maquiavelo', region: 'Italia', icon: '🎭', portrait: 'maquiavelo.png', flavor: 'Tus órdenes nunca pueden ser reveladas por un Espía rival.', coded: 'order_hidden' },
+    { id: 'isabel', name: 'Isabel I de Castilla', region: 'España', icon: '⛵', portrait: 'isabel.png', flavor: 'Al final de la partida, tus territorios de la Era III valen doble Gloria.', coded: 'double_era3_score' },
+    { id: 'voltaire', name: 'Voltaire', region: 'Francia', icon: '🖋️', portrait: 'voltaire.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'moctezuma', name: 'Moctezuma II', region: 'Imperio Azteca', icon: '🪶', portrait: 'moctezuma.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
 };
 
@@ -106,4 +122,4 @@ const DESAFIOS = [
   },
 ];
 
-module.exports = { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, TRIVIA, DESAFIOS, BOT_NAMES };
+module.exports = { REGION_POOLS, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES };

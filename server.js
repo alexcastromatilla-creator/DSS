@@ -3,10 +3,13 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES } = require('./data');
+const { REGION_POOLS, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES } = require('./data');
 
-const ORDERS_TIME = 60000;
-const DESAFIO_TIME = 30000;
+// Estos tiempos ya NO se muestran al jugador (el contador visible se quitó porque
+// se buggeaba) — son solo una red de seguridad interna para que una partida nunca
+// se quede colgada del todo si alguien no responde.
+const ORDERS_TIME = 180000;
+const DESAFIO_TIME = 90000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const ARCHETYPE_KEYS = Object.keys(ARCHETYPES);
 const MIN_PLAYERS = 2;
@@ -65,20 +68,78 @@ function addBots(room, count) {
   }
 }
 
-function freshTerritories() {
-  const t = {};
-  for (const id in TERRITORIES) t[id] = { ...TERRITORIES[id], id, owner: null, armies: 0, open: false };
-  return t;
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function connectTerritories(territories, aId, bId) {
+  if (aId === bId) return;
+  if (!territories[aId].neighbors.includes(bId)) territories[aId].neighbors.push(bId);
+  if (!territories[bId].neighbors.includes(aId)) territories[bId].neighbors.push(aId);
+}
+
+// Genera un tablero nuevo y distinto cada partida: elige 4 regiones al azar de cada
+// pool de Era (data.js tiene 8 por Era) y las conecta con un grafo aleatorio —
+// conectado dentro de cada Era, más un puente al azar con la Era anterior.
+function generateBoard() {
+  const chosenByEra = {};
+  for (const era of [1, 2, 3]) {
+    chosenByEra[era] = shuffle(REGION_POOLS[era]).slice(0, 4).map((r) => ({ ...r }));
+  }
+
+  const territories = {};
+  for (const era of [1, 2, 3]) {
+    for (const r of chosenByEra[era]) {
+      r.era = era;
+      r.neighbors = [];
+      r.owner = null;
+      r.armies = 0;
+      r.open = false;
+      territories[r.id] = r;
+    }
+  }
+
+  for (const era of [1, 2, 3]) {
+    const ids = chosenByEra[era].map((r) => r.id);
+    const order = shuffle(ids);
+    // Árbol de expansión aleatorio: garantiza que las 4 regiones de la Era queden conectadas entre sí.
+    for (let i = 1; i < order.length; i++) {
+      const b = order[Math.floor(Math.random() * i)];
+      connectTerritories(territories, order[i], b);
+    }
+    // Una conexión extra al azar, para que el mapa no sea siempre un camino lineal.
+    if (ids.length > 2) {
+      const a = ids[Math.floor(Math.random() * ids.length)];
+      const b = ids[Math.floor(Math.random() * ids.length)];
+      connectTerritories(territories, a, b);
+    }
+  }
+
+  // Puentes entre Eras: cada región nueva se conecta con al menos 1 región de la Era anterior,
+  // así siempre hay forma de expandirse hacia la Era siguiente desde territorio ya conquistado.
+  for (const era of [2, 3]) {
+    const prevIds = chosenByEra[era - 1].map((r) => r.id);
+    for (const r of chosenByEra[era]) {
+      const bridge = prevIds[Math.floor(Math.random() * prevIds.length)];
+      connectTerritories(territories, r.id, bridge);
+    }
+  }
+
+  return territories;
 }
 
 function openEraTerritories(room, era) {
+  const garrison = TROOP_TYPES[era].garrison;
   for (const id in room.territories) {
     if (room.territories[id].era === era) {
       room.territories[id].open = true;
-      room.territories[id].armies = 2;
+      room.territories[id].armies = garrison;
       room.territories[id].owner = null;
     }
   }
+}
+
+function troopName(era, count) {
+  const t = TROOP_TYPES[era] || TROOP_TYPES[1];
+  return count === 1 ? t.singular : t.plural;
 }
 
 function log(room, msg) {
@@ -122,6 +183,7 @@ function publicState(room) {
     round: room.round || null,
     maxPlayers: room.maxPlayers,
     archetypes: ARCHETYPES,
+    troopTypes: TROOP_TYPES,
     eraInfo: ERA_INFO[room.era],
     territories: room.territories,
     players: room.players.map(publicPlayer),
@@ -132,7 +194,6 @@ function publicState(room) {
     resolveLog: room.phase === 'resolve' ? room.resolveLog : null,
     simposioResult: room.phase === 'simposio' ? room.simposioResult : null,
     finalResult: room.phase === 'fin' ? room.finalResult : null,
-    phaseEndsAt: room.phaseEndsAt || null,
   };
 }
 
@@ -308,7 +369,7 @@ function applyCharacterEffect(room, p, card, resolveLog) {
       if (rivalTerritories.length) {
         const t = rivalTerritories[Math.floor(Math.random() * rivalTerritories.length)];
         t.armies -= 1; p.reserve += 1;
-        resolveLog.push(`César le roba 1 legión a ${t.name}.`);
+        resolveLog.push(`César le roba 1 ${troopName(t.era, 1)} a ${t.name}.`);
       }
       break;
     }
@@ -323,7 +384,7 @@ function applyCharacterEffect(room, p, card, resolveLog) {
         if (territs.length) {
           const t = territs.reduce((a, b) => (a.armies < b.armies ? a : b));
           t.armies -= 1;
-          resolveLog.push(`El Imperio de Gengis Kan debilita ${t.name} de ${rival.name}.`);
+          resolveLog.push(`El Imperio de Gengis Kan debilita ${t.name} de ${rival.name} (-1 ${troopName(t.era, 1)}).`);
         }
       }
       break;
@@ -359,7 +420,7 @@ function resolveOrders(room) {
         const amt = Math.max(0, Math.min(o.amount || 0, p.reserve));
         const bonus = p.archetype === 'comerciante' && amt > 0 ? 1 : 0;
         t.armies += amt + bonus; p.reserve -= amt;
-        resolveLog.push(`${p.name} refuerza ${t.name} con ${amt} legiones.` + (bonus ? ' (+1 legión gratis del Comerciante)' : ''));
+        resolveLog.push(`${p.name} refuerza ${t.name} con ${amt} ${troopName(t.era, amt)}.` + (bonus ? ` (+1 ${troopName(t.era, 1)} gratis del Comerciante)` : ''));
       }
     }
   }
@@ -377,7 +438,7 @@ function resolveOrders(room) {
           resolveLog.push(`${p.name} espía a ${target.name}.`);
           if (p.archetype === 'estratega') {
             p.reserve += 1;
-            resolveLog.push(`${p.name} (Estratega) gana 1 legión extra por espiar.`);
+            resolveLog.push(`${p.name} (Estratega) gana 1 ${troopName(room.era, 1)} extra por espiar.`);
           }
         }
       }
@@ -410,7 +471,7 @@ function resolveOrders(room) {
       if (isBootstrap) {
         // Territorio libre en la 1ª ronda de la Era: se desembarca directamente desde la reserva.
         amount = Math.max(1, Math.min(o.amount || 0, p.reserve));
-        if (amount < 1 || p.reserve < 1) { resolveLog.push(`${p.name} no tiene legiones de reserva para desembarcar en ${t.name}.`); continue; }
+        if (amount < 1 || p.reserve < 1) { resolveLog.push(`${p.name} no tiene ${troopName(t.era, 2)} de reserva para desembarcar en ${t.name}.`); continue; }
       } else {
         // Ataque normal: hace falta un territorio propio vecino con legiones de sobra —
         // las unidades que atacan son, literalmente, las que hay estacionadas ahí.
@@ -420,7 +481,7 @@ function resolveOrders(room) {
           continue;
         }
         amount = Math.max(1, Math.min(o.amount || 0, source.armies - 1));
-        if (amount < 1 || source.armies < 2) { resolveLog.push(`${p.name} no tiene legiones de sobra en ${source.name} para atacar.`); continue; }
+        if (amount < 1 || source.armies < 2) { resolveLog.push(`${p.name} no tiene ${troopName(source.era, 2)} de sobra en ${source.name} para atacar.`); continue; }
       }
 
       if (isBootstrap) p.reserve -= amount;
@@ -443,7 +504,7 @@ function resolveOrders(room) {
         const prevOwnerName = defenderPlayer ? defenderPlayer.name : 'los locales';
         if (source) source.armies -= amount; // todas las legiones comprometidas abandonan el origen (bajas + las que se mudan)
         t.owner = p.id; t.armies = survivors;
-        resolveLog.push(`${p.name} conquista ${t.name}${originTxt} (antes de ${prevOwnerName}). ${prevOwnerName} bebe ${dLoss} sorbo(s).`);
+        resolveLog.push(`${p.name} conquista ${t.name}${originTxt} con ${survivors} ${troopName(t.era, survivors)} (antes de ${prevOwnerName}). ${prevOwnerName} bebe ${dLoss} sorbo(s).`);
       } else {
         if (source) source.armies -= aLoss; // solo se pierden las bajas; el resto vuelve al origen
         t.armies = Math.max(1, t.armies);
@@ -483,7 +544,7 @@ function resolveDesafio(room) {
         else {
           const t = ownedTerritories(room, p.id);
           if (t.length) t[0].armies = Math.max(1, t[0].armies - 1);
-          resolveLog.push(`${p.name} fracasa en los Alpes (${dice}): pierde 1 legión y bebe 2 sorbos.`);
+          resolveLog.push(`${p.name} fracasa en los Alpes (${dice}): pierde 1 ${t.length ? troopName(t[0].era, 1) : 'legión'} y bebe 2 sorbos.`);
         }
       } else { p.gloria += 1; resolveLog.push(`${p.name} va por mar, seguro: +1 Gloria.`); }
     }
@@ -521,7 +582,7 @@ const actions = {
     const code = makeCode();
     const room = {
       code, hostId: ctx.playerId, players: [], phase: 'lobby', era: 1,
-      territories: freshTerritories(), log: [], desafioCursor: 0, maxPlayers: total,
+      territories: generateBoard(), log: [], desafioCursor: 0, maxPlayers: total,
     };
     rooms[code] = room;
     room.players.push(makePlayer(ctx.playerId, name || 'Jugador', false));
@@ -532,7 +593,7 @@ const actions = {
   },
 
   join_room({ code, name }, ctx) {
-    code = (code || '').toUpperCase();
+    code = (code || '').trim().toUpperCase();
     const room = rooms[code];
     if (!room) return { error: 'Esa sala no existe.' };
     if (room.players.length >= room.maxPlayers) return { error: `La sala ya tiene ${room.maxPlayers} jugadores.` };
@@ -561,6 +622,34 @@ const actions = {
     room.steps = buildEraSteps();
     room.stepIdx = 0;
     runStep(room);
+    return { ok: true };
+  },
+
+  // Reinicia la partida sin tener que crear una sala nueva ni volver a compartir código:
+  // vuelve al lobby, genera un mapa nuevo y resetea el progreso, pero conserva jugadores y arquetipos.
+  restart_room(_, ctx) {
+    const room = rooms[playerRoom[ctx.playerId]];
+    if (!room) return { error: 'Sala no encontrada.' };
+    if (room.hostId !== ctx.playerId) return { error: 'Solo el anfitrión puede reiniciar la partida.' };
+    clearTimeout(room.timer);
+    room.phase = 'lobby';
+    room.era = 1;
+    room.round = null;
+    room.territories = generateBoard();
+    room.log = [];
+    room.desafioCursor = 0;
+    room.eraDeckTaken = new Set();
+    for (const p of room.players) {
+      p.gloria = 0;
+      p.reserve = 0;
+      p.characters = [];
+      p.shield = false;
+      p.extraDefenseDie = false;
+      p.hideOrders = false;
+      p.doubleEra3 = false;
+    }
+    log(room, 'El anfitrión ha reiniciado la partida — nuevo mapa, mismos jugadores.');
+    emitRoom(room);
     return { ok: true };
   },
 
