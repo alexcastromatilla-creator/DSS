@@ -6,20 +6,59 @@
 <title>El Banquete</title>
 <style>
   :root {
-    --bg: #1b1622; --panel: #2a2233; --accent: #d4a24c; --text: #f2ece0;
-    --p0: #e15757; --p1: #4cb8a0; --p2: #e1a940;
+    --bg: #171220; --panel: #2a2233; --accent: #d4a24c; --text: #f2ece0;
+    --p0: #e15757; --p1: #4cb8a0; --p2: #e1a940; --p3: #5aa9e6; --p4: #b06ee0; --p5: #6ee0a8;
   }
   * { box-sizing: border-box; }
+  @keyframes bgDrift {
+    0% { background-position: 0% 0%, 0 0; }
+    100% { background-position: 100% 100%, 40px 40px; }
+  }
+  @keyframes idleFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-3px) rotate(-1.5deg); }
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,162,76,0.0), 0 2px 6px rgba(0,0,0,0.3); }
+    50% { box-shadow: 0 0 18px 2px rgba(212,162,76,0.35), 0 2px 6px rgba(0,0,0,0.3); }
+  }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes diceRoll {
+    0% { transform: rotate(0deg) scale(1); }
+    30% { transform: rotate(140deg) scale(1.15); }
+    60% { transform: rotate(250deg) scale(0.95); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  @keyframes sparkle {
+    0% { opacity: 0; transform: scale(0.6) translateY(6px); }
+    40% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1.3) translateY(-14px); }
+  }
   body {
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg); color: var(--text); min-height: 100vh;
+    color: var(--text); min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(212,162,76,0.10), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(90,169,230,0.10), transparent 40%),
+      linear-gradient(135deg, #1b1622 0%, #171220 50%, #201830 100%);
+    background-size: 200% 200%, 60px 60px, 100% 100%;
+    animation: bgDrift 30s ease-in-out infinite alternate;
   }
   #app { max-width: 480px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
   h1 { font-size: 1.5rem; text-align: center; color: var(--accent); margin: 12px 0 4px; letter-spacing: 1px; }
   h2 { font-size: 1.1rem; color: var(--accent); margin: 18px 0 8px; }
   .sub { text-align: center; color: #b8afc4; font-size: 0.85rem; margin-bottom: 16px; }
-  .card { background: var(--panel); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
-  input[type=text] {
+  .card {
+    background: linear-gradient(160deg, var(--panel), #241d30);
+    border: 1px solid rgba(212,162,76,0.12);
+    border-radius: 12px; padding: 14px; margin-bottom: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    animation: fadeSlideIn 0.35s ease-out;
+  }
+  input[type=text], input[type=number] {
     width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #4a3f5c; background: #17131d; color: var(--text);
     font-size: 1rem; margin-bottom: 10px;
   }
@@ -27,28 +66,62 @@
   button {
     width: 100%; padding: 13px; border-radius: 8px; border: none; background: var(--accent); color: #1b1622;
     font-weight: 700; font-size: 1rem; margin-bottom: 8px; cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
   }
+  button:active { transform: scale(0.97); }
   button:disabled { opacity: 0.45; }
   button.secondary { background: #423861; color: var(--text); }
   .option-btn { background: #3a3050; color: var(--text); text-align: left; font-weight: 500; }
-  .option-btn.chosen { background: var(--accent); color: #1b1622; }
+  .option-btn.chosen { background: var(--accent); color: #1b1622; animation: glowPulse 1.6s ease-in-out infinite; }
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; margin-right: 4px; }
   .players-list { display: flex; flex-direction: column; gap: 8px; }
-  .player-chip { display: flex; justify-content: space-between; align-items: center; background: #241d2e; padding: 8px 12px; border-radius: 8px; }
+  .player-chip { display: flex; justify-content: space-between; align-items: center; background: #241d2e; padding: 8px 12px; border-radius: 8px; animation: fadeSlideIn 0.3s ease-out; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
   .territories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .territory { background: #241d2e; border-radius: 8px; padding: 8px; font-size: 0.8rem; border: 2px solid transparent; }
+  .territory { background: #241d2e; border-radius: 8px; padding: 8px; font-size: 0.8rem; border: 2px solid transparent; transition: border-color 0.3s ease; }
   .log { font-size: 0.85rem; color: #cbc2d9; max-height: 160px; overflow-y: auto; }
-  .log div { padding: 4px 0; border-bottom: 1px solid #382e48; }
+  .log div { padding: 4px 0; border-bottom: 1px solid #382e48; animation: fadeSlideIn 0.25s ease-out; }
   .timer { text-align: center; font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; }
   .center { text-align: center; }
   .muted { color: #9d92ae; font-size: 0.85rem; }
   .flavor { font-style: italic; color: #cbc2d9; line-height: 1.4; }
-  .rank { display: flex; justify-content: space-between; padding: 10px; background: #241d2e; border-radius: 8px; margin-bottom: 6px; }
-  .rank.first { border: 2px solid var(--accent); }
+  .rank { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #241d2e; border-radius: 8px; margin-bottom: 6px; }
+  .rank.first { border: 2px solid var(--accent); animation: glowPulse 1.8s ease-in-out infinite; }
   #err { color: #ff8080; text-align: center; min-height: 20px; font-size: 0.85rem; }
+
+  /* Retratos tipo "consejero" para arquetipos y personajes */
+  .portrait {
+    width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+    border: 2px solid rgba(255,255,255,0.15);
+    animation: idleFloat 4.5s ease-in-out infinite;
+  }
+  .portrait.big { width: 68px; height: 68px; font-size: 2.1rem; }
+  .portrait-row { display: flex; align-items: center; gap: 12px; }
+  .arch-card {
+    display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px;
+  }
+  .arch-card .info { flex: 1; }
+  .arch-card .name { font-weight: 700; margin-bottom: 2px; }
+  .arch-card .desc { font-weight: 400; font-size: 0.8rem; opacity: 0.85; }
+
+  .char-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; animation: fadeSlideIn 0.4s ease-out; }
+  .char-item .portrait { width: 34px; height: 34px; min-width: 34px; font-size: 1.1rem; }
+
+  /* Barra de progreso para los temporizadores */
+  .progress-wrap { margin-bottom: 10px; }
+  .progress-track { width: 100%; height: 8px; border-radius: 6px; background: #241d2e; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #f0c878); transition: width 1s linear; }
+
+  /* Animación de dados durante la resolución de combate */
+  .dice-row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+  .die { width: 26px; height: 26px; border-radius: 6px; background: #3a3050; border: 1px solid rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
+    animation: diceRoll 0.5s ease-out; }
+
+  .sparkle-emoji { display: inline-block; animation: sparkle 1.1s ease-out; }
 </style>
 </head>
 <body>
@@ -66,7 +139,7 @@ let joinedName = '';
 const screen = document.getElementById('screen');
 const errBox = document.getElementById('err');
 
-const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)'];
+const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)', 'var(--p5)'];
 
 function colorFor(playerId) {
   if (!state) return '#666';
@@ -146,6 +219,19 @@ function renderConnect() {
     <div class="card">
       <h2>Entrar en una partida</h2>
       <input type="text" id="nameInput" placeholder="Tu nombre" maxlength="20">
+    </div>
+    <div class="card">
+      <h2>Crear sala nueva</h2>
+      <p class="muted">¿Cuántos jugadores en total (contándote a ti)?</p>
+      <select id="maxPlayersInput">
+        <option value="2">2 jugadores</option>
+        <option value="3" selected>3 jugadores</option>
+        <option value="4">4 jugadores</option>
+        <option value="5">5 jugadores</option>
+        <option value="6">6 jugadores</option>
+      </select>
+      <p class="muted">¿Cuántos de ellos son bots (para testear solo/a)?</p>
+      <select id="botsInput"></select>
       <button id="createBtn">Crear sala nueva</button>
     </div>
     <div class="card">
@@ -154,9 +240,30 @@ function renderConnect() {
       <button class="secondary" id="joinBtn">Unirme</button>
     </div>
   `;
+  const maxPlayersInput = document.getElementById('maxPlayersInput');
+  const botsInput = document.getElementById('botsInput');
+  function refreshBotsOptions() {
+    const total = parseInt(maxPlayersInput.value, 10);
+    botsInput.innerHTML = '';
+    for (let i = 0; i <= total - 1; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i === 0 ? `Ningún bot (${total} humanos)` : `${i} bot${i > 1 ? 's' : ''} (${total - i} humano${total - i > 1 ? 's' : ''})`;
+      botsInput.appendChild(opt);
+    }
+    // Por defecto proponemos jugar solo/a contra bots, que es el caso de "probar el juego".
+    botsInput.value = total - 1;
+  }
+  maxPlayersInput.onchange = refreshBotsOptions;
+  refreshBotsOptions();
+
   document.getElementById('createBtn').onclick = () => {
     joinedName = document.getElementById('nameInput').value || 'Jugador';
-    call('create_room', { name: joinedName });
+    call('create_room', {
+      name: joinedName,
+      maxPlayers: parseInt(maxPlayersInput.value, 10),
+      botsWanted: parseInt(botsInput.value, 10),
+    });
   };
   document.getElementById('joinBtn').onclick = () => {
     joinedName = document.getElementById('nameInput').value || 'Jugador';
@@ -168,40 +275,42 @@ function renderConnect() {
 function renderLobby() {
   const isHost = state.players[0] && state.players[0].id === myId;
   const me = state.players.find(p => p.id === myId);
-  const archOptions = ['filosofo', 'estratega', 'diplomatico'];
-  const archNames = { filosofo: 'El Filósofo', estratega: 'El Estratega', diplomatico: 'El Diplomático' };
-  const archDesc = {
-    filosofo: '+1 dado siempre que defiendes.',
-    estratega: 'Al espiar, +1 legión extra de reserva.',
-    diplomatico: 'Al ganar un debate, tu Gloria se duplica.',
-  };
+  const archOptions = Object.keys(state.archetypes);
   screen.innerHTML = `
     <div class="card center">
       <div class="muted">Código de sala</div>
       <h1 style="margin:4px 0;">${state.code}</h1>
-      <div class="muted">Compártelo con tus otros 2 jugadores</div>
+      <div class="muted">Compártelo con tus jugadores humanos (los bots ya están dentro)</div>
     </div>
     <div class="card">
-      <h2>Jugadores (${state.players.length}/3)</h2>
+      <h2>Jugadores (${state.players.length}/${state.maxPlayers})</h2>
       <div class="players-list">
         ${state.players.map((p, i) => `
           <div class="player-chip">
-            <span><span class="dot" style="background:${PLAYER_COLORS[i]}"></span>${p.name}${p.id === myId ? ' (tú)' : ''}</span>
-            <span class="muted">${p.archetype ? archNames[p.archetype] : 'eligiendo…'}</span>
+            <span class="portrait-row">
+              <span class="portrait" style="background:${p.archetype ? state.archetypes[p.archetype].color : '#3a3050'}22;border-color:${PLAYER_COLORS[i]}">${p.archetype ? state.archetypes[p.archetype].icon : (p.isBot ? '🤖' : '👤')}</span>
+              <span>${p.isBot ? '🤖 ' : ''}${p.name}${p.id === myId ? ' (tú)' : ''}</span>
+            </span>
+            <span class="muted">${p.archetype ? state.archetypes[p.archetype].name : 'eligiendo…'}</span>
           </div>`).join('')}
       </div>
     </div>
     <div class="card">
       <h2>Elige tu Arquetipo</h2>
       ${archOptions.map(a => {
+        const arch = state.archetypes[a];
         const takenBy = state.players.find(p => p.archetype === a && p.id !== myId);
         const mine = me && me.archetype === a;
-        return `<button class="option-btn ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-arch="${a}">
-          ${archNames[a]} ${takenBy ? '(ocupado)' : ''}<br><span class="muted" style="font-weight:400;">${archDesc[a]}</span>
+        return `<button class="option-btn arch-card ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-arch="${a}">
+          <span class="portrait" style="background:${arch.color}22;border-color:${arch.color}">${arch.icon}</span>
+          <span class="info">
+            <div class="name">${arch.name} ${takenBy ? '(ocupado)' : ''}</div>
+            <div class="desc">${arch.desc}</div>
+          </span>
         </button>`;
       }).join('')}
     </div>
-    ${isHost ? `<button id="startBtn">Empezar partida</button>` : `<div class="muted center">Esperando a que el anfitrión empiece la partida…</div>`}
+    ${isHost ? `<button id="startBtn" ${state.players.length !== state.maxPlayers ? 'disabled' : ''}>${state.players.length !== state.maxPlayers ? `Esperando jugadores (${state.players.length}/${state.maxPlayers})` : 'Empezar partida'}</button>` : `<div class="muted center">Esperando a que el anfitrión empiece la partida…</div>`}
   `;
   document.querySelectorAll('[data-arch]').forEach(btn => {
     btn.onclick = () => call('choose_archetype', { archetype: btn.dataset.arch });
@@ -264,7 +373,11 @@ function renderOrders() {
       <button id="sendOrder">Enviar orden</button>
       `}
     </div>
-    ${state.you.characters.length ? `<div class="card"><h2>Tus Personajes</h2>${state.you.characters.map(c => `<div class="muted">👑 ${c.name} — ${c.flavor}</div>`).join('')}</div>` : ''}
+    ${state.you.characters.length ? `<div class="card"><h2>Tus Personajes</h2>${state.you.characters.map(c => `
+      <div class="char-item">
+        <span class="portrait" style="background:#3a305055;border-color:var(--accent)">${c.icon || '👑'}</span>
+        <span class="muted"><b style="color:var(--text)">${c.name}</b> — ${c.flavor}</span>
+      </div>`).join('')}</div>` : ''}
   `;
   if (submitted) return;
 
@@ -309,9 +422,11 @@ function renderOrders() {
 
 function renderResolve() {
   const isHost = state.players[0] && state.players[0].id === myId;
+  const hasCombat = (state.resolveLog || []).some(l => l.includes('ataca') || l.includes('conquista'));
   screen.innerHTML = `
     <div class="card">
       <h2>Resultado de la Ronda ${state.round}</h2>
+      ${hasCombat ? `<div class="dice-row"><div class="die">⚔️</div><div class="die">🎲</div><div class="die">🎲</div></div>` : ''}
       <div class="log">${(state.resolveLog || []).map(l => `<div>${l}</div>`).join('')}</div>
     </div>
     ${renderBoard()}
@@ -376,16 +491,25 @@ function renderFin() {
         <div class="rank ${i === 0 ? 'first' : ''}">
           <span>${i === 0 ? '👑 ' : ''}${r.name}</span>
           <span>${r.gloria} Gloria · ${r.territorios} territorios</span>
-          </div>`).join('')}
+        </div>`).join('')}
       <p class="muted" style="margin-top:12px;">¡Brindad por quien ha ganado y otra por quien ha perdido!</p>
     </div>
   `;
 }
 
+const PHASE_DURATIONS = { trivia: 15000, orders: 60000, desafio: 30000 };
+
 function renderTimer() {
   if (!state.phaseEndsAt) return '';
-  const secs = Math.max(0, Math.round((state.phaseEndsAt - Date.now()) / 1000));
-  return `<div class="timer">⏳ ${secs}s</div>`;
+  const total = PHASE_DURATIONS[state.phase] || 30000;
+  const remainingMs = Math.max(0, state.phaseEndsAt - Date.now());
+  const secs = Math.round(remainingMs / 1000);
+  const pct = Math.max(0, Math.min(100, (remainingMs / total) * 100));
+  return `
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="timer">⏳ ${secs}s</div>
+    </div>`;
 }
 
 function renderBoard() {
@@ -397,7 +521,7 @@ function renderBoard() {
       return `<div class="territories" style="margin-bottom:8px;">
         ${terrs.map(t => `
           <div class="territory" style="border-color:${t.owner ? colorFor(t.owner) : '#4a3f5c'}">
-            <b>${t.name}</b><br>
+            <b>${t.icon || ''} ${t.name}</b><br>
             <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'} · ${t.armies} 🛡️</span>
           </div>`).join('')}
       </div>`;
