@@ -1,8 +1,8 @@
 # El Banquete
 
-Juego de conquista, historia y brindis para 3 jugadores, cada uno desde su móvil.
+Juego de conquista, historia y brindis para 2 a 6 jugadores, cada uno desde su móvil.
 
-Es la primera versión jugable del diseño que hicimos juntos: tablero de 12 territorios que se abre en 3 Eras (Grecia/Roma → Rutas de Oriente → Renacimiento y Nuevo Mundo), combate por dados, trivia como ventaja táctica, cartas de Personaje y los Desafíos de estrategia+bebida.
+Tablero de 12 territorios que se abre en 3 Eras (Grecia/Roma → Rutas de Oriente → Renacimiento y Nuevo Mundo), combate por dados al estilo Risk (atacas desde un territorio tuyo concreto, con las legiones que tengas ahí estacionadas), cartas de Personaje y los Desafíos de estrategia+bebida. También puedes jugar contra bots para probarlo sin esperar a tener gente disponible.
 
 ## Requisitos
 
@@ -30,13 +30,13 @@ Sigue **`DEPLOY_RENDER.md`** (incluido en esta carpeta) — son dos webs y un ra
 
 ## Jugar solo/a contra bots (para probar el juego)
 
-Ya no hace falta esperar a tener 2 amigos disponibles para probarlo. En la pantalla inicial, al crear sala, eliges cuántos jugadores en total (2 a 6) y cuántos de ellos son bots — por defecto te propone "tú + el resto bots" para que puedas testear una partida completa tú solo/a. Los bots eligen arquetipo, responden trivia, envían órdenes y participan en los Desafíos de forma automática (con un pequeño retraso, para que se sienta natural).
+Ya no hace falta esperar a tener 2 amigos disponibles para probarlo. En la pantalla inicial, al crear sala, eliges cuántos jugadores en total (2 a 6) y cuántos de ellos son bots (por defecto 0, para no dejar sin sitio a tus amigos por despiste). Si quieres testear una partida completa tú solo/a, sube el número de bots a "total - 1". Los bots eligen arquetipo, envían órdenes y participan en los Desafíos de forma automática (con un pequeño retraso, para que se sienta natural).
 
 ## Cómo se juega
 
-1. **Lobby:** el anfitrión crea la sala (eligiendo nº de jugadores y de bots) y comparte el código con los jugadores humanos que falten — los bots ya están dentro. Cada uno elige su Arquetipo: ahora hay 6 disponibles (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante), cada uno con un icono y un bonus distinto.
+1. **Lobby:** el anfitrión crea la sala (eligiendo nº de jugadores y de bots) y comparte el código con los jugadores humanos que falten — los bots ya están dentro. Cada uno elige su Arquetipo: hay 6 disponibles (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante), cada uno con un icono y un bonus distinto.
 2. **Cada Era** (3 en total) abre 4 territorios nuevos en el tablero y dura 3 rondas.
-3. **Cada ronda:** primero una pregunta de trivia rápida (30 segundos) — acertarla da una ventaja táctica en tu próximo combate. Luego, en secreto desde tu móvil, eliges una orden: **Atacar** un territorio, **Reforzar** uno tuyo, **Reclutar** un Personaje, o **Espiar** a un rival. Se resuelve todo a la vez y el resultado (incluidos los sorbos) se muestra en pantalla.
+3. **Cada ronda:** en secreto desde tu móvil, eliges una orden: **Atacar** (eligiendo territorio de origen —uno tuyo, con legiones de sobra— y el territorio vecino que quieres conquistar, como en el Risk), **Reforzar** uno tuyo, **Reclutar** un Personaje, o **Espiar** a un rival. Se resuelve todo a la vez y el resultado (incluidos los sorbos) se muestra en pantalla junto al tablero actualizado.
 4. **Tras la 2ª ronda de cada Era:** un Desafío de grupo (dilema, riesgo o debate) — el componente más "de beber" del juego.
 5. **Al final de cada Era:** un Simposio reparte Gloria según los territorios que controla cada uno.
 6. Gana quien más Gloria tenga al final de la Era III.
@@ -50,20 +50,20 @@ Comparado con el documento de diseño completo:
 - **Arquetipos:** hay 6 implementados (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante) de los que puede haber más en el diseño completo.
 - **Personajes:** cada Era tiene un mazo de 4 (en vez de los ~13-16 del diseño completo). 2 de cada 4 tienen efecto mecánico real en el juego (César, Diógenes, Genghis Khan, Avicena, Maquiavelo, Isabel de Castilla); los otros 2 son cartas de prestigio que dan +1 Gloria.
 - **Desafíos:** hay 3 implementados (Dilema del Prisionero, Encrucijada de Aníbal, Debate de Atenas) que rotan uno por Era, en vez del mazo completo de 8.
-- **Combate:** dados estilo Risk (hasta 3 atacantes vs 2 defensores) con los bonos de Arquetipo y Personaje ya integrados.
-- **Refuerzos militares:** las legiones que envías a atacar salen siempre de tu reserva (no gestionas el movimiento físico de tropas entre territorios), para mantener la partida ágil desde el móvil.
+- **Combate:** dados estilo Risk (hasta 3 atacantes vs 2 defensores) con los bonos de Arquetipo y Personaje ya integrados. Atacas desde un territorio tuyo concreto (dejando al menos 1 legión de guarnición); si conquistas, las legiones supervivientes se mudan al territorio nuevo, si fracasas solo pierdes las bajas y el resto vuelve a casa.
+- **Territorios libres:** en la 1ª ronda de cada Era, los 4 territorios nuevos están sin dueño y se colonizan directamente desde tu reserva (no hace falta tener ya un vecino tuyo).
 
-Nada de esto es difícil de ampliar — si tras un par de partidas veis que os falta contenido (más trivia, más Personajes, más Desafíos), es la parte más rápida de añadir porque toda la estructura ya está montada en `data.js`.
+Nada de esto es difícil de ampliar — si tras un par de partidas veis que os falta contenido (más Personajes, más Desafíos), es la parte más rápida de añadir porque toda la estructura ya está montada en `data.js`.
 
 ## Verificación
 
-Antes de entregarlo, la lógica del juego se probó con una simulación automática de una partida completa de 3 jugadores (las 3 Eras, todas las fases) sin errores, y por separado con un test en navegador real (3 pestañas simultáneas) cubriendo lobby, elección de Arquetipo, trivia y envío de órdenes, también sin errores.
+La lógica del juego se probó con simulaciones automáticas de partidas completas (3 humanos, y por separado 1 humano + bots) sin errores, y por separado con tests en navegador real cubriendo lobby, selección de nº de jugadores/bots, elección de Arquetipo, envío de órdenes de ataque con territorio de origen, y que el formulario de órdenes no se borra aunque otro jugador (o un bot) envíe su orden mientras tú sigues eligiendo la tuya.
 
 ## Estructura del proyecto
 
 ```
 server.js       → toda la lógica del juego y el servidor (sin dependencias externas)
-data.js         → territorios, personajes, trivia y desafíos (aquí se amplía el contenido)
+data.js         → territorios, personajes y desafíos (aquí se amplía el contenido)
 public/index.html → la interfaz — una sola página, funciona en cualquier móvil
 package.json
 ```

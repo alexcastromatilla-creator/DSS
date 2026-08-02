@@ -3,9 +3,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, TRIVIA, DESAFIOS, BOT_NAMES } = require('./data');
+const { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES } = require('./data');
 
-const TRIVIA_TIME = 15000;
 const ORDERS_TIME = 60000;
 const DESAFIO_TIME = 30000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -99,10 +98,10 @@ function pickDesafio(room) {
 function buildEraSteps() {
   return [
     { p: 'era_intro' },
-    { p: 'trivia', round: 1 }, { p: 'orders', round: 1 },
-    { p: 'trivia', round: 2 }, { p: 'orders', round: 2 },
+    { p: 'orders', round: 1 },
+    { p: 'orders', round: 2 },
     { p: 'desafio' },
-    { p: 'trivia', round: 3 }, { p: 'orders', round: 3 },
+    { p: 'orders', round: 3 },
     { p: 'simposio' },
   ];
 }
@@ -111,11 +110,6 @@ function playerById(room, id) { return room.players.find((p) => p.id === id); }
 function ownedTerritories(room, playerId, era) {
   return Object.values(room.territories).filter((t) => t.owner === playerId && (era ? t.era === era : true));
 }
-function hasAdjacentOwned(room, playerId, targetId) {
-  const target = room.territories[targetId];
-  return target.neighbors.some((nId) => room.territories[nId] && room.territories[nId].owner === playerId && room.territories[nId].armies > 0);
-}
-
 function publicPlayer(p) {
   return { id: p.id, name: p.name, archetype: p.archetype, gloria: p.gloria, reserve: p.reserve, characterCount: p.characters.length, isBot: !!p.isBot };
 }
@@ -132,8 +126,6 @@ function publicState(room) {
     territories: room.territories,
     players: room.players.map(publicPlayer),
     log: room.log,
-    question: room.phase === 'trivia' ? { q: room.currentQuestion.q, options: room.currentQuestion.options } : null,
-    questionAnswered: room.phase === 'trivia' ? Object.keys(room.questionAnswers) : [],
     ordersSubmitted: room.phase === 'orders' ? Object.keys(room.orders) : [],
     desafio: room.phase === 'desafio' ? room.currentDesafio : null,
     desafioResponses: room.phase === 'desafio' ? Object.keys(room.desafioResponses) : [],
@@ -173,19 +165,6 @@ function runStep(room) {
     log(room, `Comienza la ${ERA_INFO[room.era].titulo}`);
     room.phaseEndsAt = null;
     emitRoom(room);
-    return;
-  }
-
-  if (step.p === 'trivia') {
-    const bank = TRIVIA[room.era];
-    room.currentQuestion = bank[Math.floor(Math.random() * bank.length)];
-    room.questionAnswers = {};
-    room.tacticalBonus = {};
-    room.firstCorrect = null;
-    room.phaseEndsAt = Date.now() + TRIVIA_TIME;
-    emitRoom(room);
-    scheduleBots(room);
-    room.timer = setTimeout(() => advanceStep(room), TRIVIA_TIME);
     return;
   }
 
@@ -250,7 +229,6 @@ function advanceStep(room) {
   runStep(room);
 }
 
-function allAnswered(room) { return Object.keys(room.questionAnswers).length >= room.players.length; }
 function allOrdered(room) { return Object.keys(room.orders).length >= room.players.length; }
 
 // ---------- IA de los bots ----------
@@ -258,24 +236,41 @@ function allOrdered(room) { return Object.keys(room.orders).length >= room.playe
 function botPickOrder(room, bot) {
   const territories = Object.values(room.territories).filter((t) => t.open);
   const mine = territories.filter((t) => t.owner === bot.id);
-  const others = territories.filter((t) => t.owner !== bot.id);
-  const reachable = others.filter((t) => {
-    const isBootstrap = room.round === 1 && t.era === room.era && t.owner === null;
-    return isBootstrap || hasAdjacentOwned(room, bot.id, t.id);
-  });
+
+  const isBootstrapRound = room.round === 1;
+  const bootstrapTargets = isBootstrapRound
+    ? territories.filter((t) => t.era === room.era && t.owner === null)
+    : [];
+
+  // Objetivos "normales": vecinos de un territorio propio con legiones de sobra.
+  const regularOptions = [];
+  for (const src of mine) {
+    if (src.armies <= 1) continue;
+    for (const nId of src.neighbors) {
+      const n = room.territories[nId];
+      if (n && n.open && n.owner !== bot.id) regularOptions.push({ src, target: n });
+    }
+  }
+
   const roll = Math.random();
 
-  if (bot.reserve >= 1 && reachable.length && roll < 0.45) {
-    const target = reachable[Math.floor(Math.random() * reachable.length)];
+  if (bot.reserve >= 1 && bootstrapTargets.length && roll < 0.4) {
+    const target = bootstrapTargets[Math.floor(Math.random() * bootstrapTargets.length)];
     const amount = Math.max(1, Math.min(bot.reserve, 1 + Math.floor(Math.random() * 2)));
     return { type: 'atacar', to: target.id, amount };
   }
-  if (bot.reserve >= 1 && mine.length && roll < 0.65) {
+  if (regularOptions.length && roll < 0.65) {
+    const pick = regularOptions[Math.floor(Math.random() * regularOptions.length)];
+    const maxAmount = pick.src.armies - 1;
+    const amount = Math.max(1, Math.min(maxAmount, 1 + Math.floor(Math.random() * 2)));
+    return { type: 'atacar', to: pick.target.id, from: pick.src.id, amount };
+  }
+  if (bot.reserve >= 1 && mine.length && roll < 0.85) {
     const target = mine[Math.floor(Math.random() * mine.length)];
     const amount = Math.max(1, Math.min(bot.reserve, 1 + Math.floor(Math.random() * 2)));
     return { type: 'reforzar', territoryId: target.id, amount };
   }
-  if (roll < 0.85) return { type: 'reclutar' };
+  if (roll < 0.93) return { type: 'reclutar' };
   const others_ = room.players.filter((p) => p.id !== bot.id);
   if (others_.length) return { type: 'espiar', targetId: others_[Math.floor(Math.random() * others_.length)].id };
   return { type: 'reclutar' };
@@ -288,10 +283,7 @@ function scheduleBots(room) {
     setTimeout(() => {
       const r = rooms[room.code];
       if (!r || r.phase !== phase) return; // la fase ya cambió, no hacer nada
-      if (phase === 'trivia') {
-        const idx = Math.floor(Math.random() * r.currentQuestion.options.length);
-        actions.submit_answer({ optionIndex: idx }, { playerId: bot.id });
-      } else if (phase === 'orders') {
+      if (phase === 'orders') {
         const order = botPickOrder(r, bot);
         actions.submit_order({ order }, { playerId: bot.id });
       } else if (phase === 'desafio') {
@@ -409,20 +401,34 @@ function resolveOrders(room) {
     const o = room.orders[p.id];
     if (o && o.type === 'atacar') {
       const t = room.territories[o.to];
-      if (!t || !t.open) continue;
-      const amount = Math.max(1, Math.min(o.amount || 0, p.reserve));
-      if (amount < 1 || p.reserve < 1) continue;
+      if (!t || !t.open || t.owner === p.id) continue;
 
       const isBootstrap = room.round === 1 && t.era === room.era && t.owner === null;
-      const canAttack = isBootstrap || hasAdjacentOwned(room, p.id, o.to);
-      if (!canAttack) { resolveLog.push(`${p.name} no tiene forma de alcanzar ${t.name} todavía.`); continue; }
-      if (t.owner === p.id) continue;
+      let source = null;
+      let amount;
 
-      p.reserve -= amount;
+      if (isBootstrap) {
+        // Territorio libre en la 1ª ronda de la Era: se desembarca directamente desde la reserva.
+        amount = Math.max(1, Math.min(o.amount || 0, p.reserve));
+        if (amount < 1 || p.reserve < 1) { resolveLog.push(`${p.name} no tiene legiones de reserva para desembarcar en ${t.name}.`); continue; }
+      } else {
+        // Ataque normal: hace falta un territorio propio vecino con legiones de sobra —
+        // las unidades que atacan son, literalmente, las que hay estacionadas ahí.
+        source = room.territories[o.from];
+        if (!source || source.owner !== p.id || !source.neighbors.includes(t.id)) {
+          resolveLog.push(`${p.name} no tiene un territorio de origen válido junto a ${t.name}.`);
+          continue;
+        }
+        amount = Math.max(1, Math.min(o.amount || 0, source.armies - 1));
+        if (amount < 1 || source.armies < 2) { resolveLog.push(`${p.name} no tiene legiones de sobra en ${source.name} para atacar.`); continue; }
+      }
+
+      if (isBootstrap) p.reserve -= amount;
+
       const defenderPlayer = t.owner ? playerById(room, t.owner) : null;
       const dBonus = !!(defenderPlayer && (defenderPlayer.archetype === 'filosofo' || defenderPlayer.extraDefenseDie));
       const aBonus = p.archetype === 'explorador' && isBootstrap;
-      const aDice = roll(Math.min(amount, 3) + (room.tacticalBonus[p.id] ? 1 : 0) + (aBonus ? 1 : 0));
+      const aDice = roll(Math.min(amount, 3) + (aBonus ? 1 : 0));
       const dDice = roll(Math.min(t.armies, 2) + (dBonus ? 1 : 0));
       let aLoss = 0, dLoss = 0;
       const cmp = Math.min(aDice.length, dDice.length);
@@ -431,14 +437,17 @@ function resolveOrders(room) {
       if (p.archetype === 'guerrero' && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); resolveLog.push(`${p.name} (Guerrero) evita 1 baja en combate.`); }
       const survivors = amount - aLoss;
       t.armies = Math.max(0, t.armies - dLoss);
+      const originTxt = source ? ` desde ${source.name}` : '';
 
       if (t.armies <= 0 && survivors > 0) {
         const prevOwnerName = defenderPlayer ? defenderPlayer.name : 'los locales';
+        if (source) source.armies -= amount; // todas las legiones comprometidas abandonan el origen (bajas + las que se mudan)
         t.owner = p.id; t.armies = survivors;
-        resolveLog.push(`${p.name} conquista ${t.name} (antes de ${prevOwnerName}). ${prevOwnerName} bebe ${dLoss} sorbo(s).`);
+        resolveLog.push(`${p.name} conquista ${t.name}${originTxt} (antes de ${prevOwnerName}). ${prevOwnerName} bebe ${dLoss} sorbo(s).`);
       } else {
+        if (source) source.armies -= aLoss; // solo se pierden las bajas; el resto vuelve al origen
         t.armies = Math.max(1, t.armies);
-        resolveLog.push(`${p.name} ataca ${t.name} y fracasa. ${p.name} bebe ${aLoss} sorbo(s).`);
+        resolveLog.push(`${p.name} ataca ${t.name}${originTxt} y fracasa. ${p.name} bebe ${aLoss} sorbo(s).`);
       }
     }
   }
@@ -552,22 +561,6 @@ const actions = {
     room.steps = buildEraSteps();
     room.stepIdx = 0;
     runStep(room);
-    return { ok: true };
-  },
-
-  submit_answer({ optionIndex }, ctx) {
-    const room = rooms[playerRoom[ctx.playerId]];
-    if (!room || room.phase !== 'trivia') return { error: 'No es el momento.' };
-    if (room.questionAnswers[ctx.playerId] !== undefined) return { error: 'Ya has respondido.' };
-    room.questionAnswers[ctx.playerId] = optionIndex;
-    const notices = {};
-    if (optionIndex === room.currentQuestion.correct && !room.firstCorrect) {
-      room.firstCorrect = ctx.playerId;
-      room.tacticalBonus[ctx.playerId] = true;
-      notices[ctx.playerId] = { type: 'trivia_bonus' };
-    }
-    emitRoom(room, notices);
-    if (allAnswered(room)) advanceStep(room);
     return { ok: true };
   },
 
