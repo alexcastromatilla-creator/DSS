@@ -170,6 +170,17 @@
     padding: 6px 2px 10px; font-size: 0.8rem; }
   #roomBar .roomBarBtns { display: flex; gap: 6px; }
   button.tiny { width: auto; padding: 6px 10px; font-size: 0.78rem; margin-bottom: 0; border-radius: 20px; }
+
+  /* Panel de tropas y mejoras: escalera de niveles por Época */
+  .troop-tier { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #382e48; }
+  .troop-tier:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .troop-tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .level-ladder { margin-bottom: 8px; }
+  .level-row { padding: 4px 0 6px 10px; border-left: 3px solid #3a3050; margin-bottom: 2px; }
+  .level-row.level-current { border-left-color: var(--accent); }
+  .level-row-title { font-weight: 600; font-size: 0.82rem; }
+  .level-row-desc { font-size: 0.74rem; margin-top: 2px; line-height: 1.35; }
+  .level-up-btn { font-size: 0.85rem; }
 </style>
 </head>
 <body>
@@ -190,6 +201,9 @@ const screen = document.getElementById('screen');
 const errBox = document.getElementById('err');
 
 const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)', 'var(--p5)'];
+// Mismo tamaño de lienzo que usa el servidor para calcular las coordenadas x,y de cada territorio
+// (ver MAP_W/MAP_H y layoutTerritories en server.js) — así el viewBox del SVG encaja exactamente.
+const MAP_W = 320, MAP_H = 380;
 
 function colorFor(playerId) {
   if (!state) return '#666';
@@ -228,6 +242,51 @@ function portraitFrame(character, size) {
   const sizeClass = size || 'medium';
   const img = character.portrait ? `<img src="/images/${character.portrait}" alt="" onerror="this.remove()">` : '';
   return `<span class="frame ${sizeClass}">${img}<span class="fallback">${character.icon || '👑'}</span></span>`;
+}
+
+// Panel de tropas y mejoras: para cada Época ya alcanzada, muestra la escalera completa de niveles
+// (qué hace cada uno en detalle, en cuál estás, cuánto cuesta subir) y un botón para mejorar. Subir
+// de nivel es una decisión aparte de tu orden de la ronda — no la gasta, se puede hacer en cualquier
+// momento que tengas Recursos suficientes — y la mejora es PARA SIEMPRE: sube el nivel de todas tus
+// tropas de esa Época, las que ya tienes y las que consigas después (tecnología compartida).
+function renderTroopPanel() {
+  const me = state.players.find(p => p.id === myId);
+  if (!me) return '';
+  const eras = [1, 2, 3].filter(e => e <= state.era);
+  if (!eras.length) return '';
+  const myResources = me.resources || 0;
+  return `<div class="card">
+    <h2>⚔️ Tus tropas y mejoras</h2>
+    <p class="muted" style="margin-bottom:10px;">Tienes <b style="color:var(--accent)">${myResources} 💰 Recursos</b> (ganas 1 por cada territorio que controlas, al final de cada ronda). Mejorar un tipo de tropa es para siempre y afecta a todas tus tropas de esa Época.</p>
+    ${eras.map(e => {
+      const troopDef = state.troopTypes[e];
+      const curLevel = (me.troopLevels && me.troopLevels[e]) || 1;
+      const nextDef = troopDef.levels.find(l => l.level === curLevel + 1);
+      return `
+        <div class="troop-tier">
+          <div class="troop-tier-head">
+            <span class="portrait" style="border-color:var(--accent)">${troopDef.icon}</span>
+            <b>${ERA_LABELS[e]} — ${troopDef.plural}</b>
+          </div>
+          <div class="level-ladder">
+            ${troopDef.levels.map(l => {
+              const status = l.level < curLevel ? '✅' : l.level === curLevel ? '👉' : '🔒';
+              const cls = l.level === curLevel ? 'level-current' : '';
+              return `<div class="level-row ${cls}">
+                <div class="level-row-title">${status} Nivel ${l.level} — ${l.name}${l.cost ? ` <span class="muted">(coste ${l.cost} 💰)</span>` : ' <span class="muted">(inicial)</span>'}</div>
+                <div class="level-row-desc muted">${l.desc}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          ${nextDef ? `<button class="secondary level-up-btn" data-era="${e}" ${myResources < nextDef.cost ? 'disabled' : ''}>⬆️ Mejorar a "${nextDef.name}" (${nextDef.cost} 💰)${myResources < nextDef.cost ? ` — te faltan ${nextDef.cost - myResources}` : ''}</button>` : `<p class="muted center" style="margin-bottom:4px;">Nivel máximo alcanzado en esta Época.</p>`}
+        </div>`;
+    }).join('')}
+  </div>`;
+}
+function wireTroopPanel() {
+  document.querySelectorAll('.level-up-btn').forEach(btn => {
+    btn.onclick = () => call('level_up_troop', { era: parseInt(btn.dataset.era, 10) });
+  });
 }
 
 function showError(msg) {
@@ -290,8 +349,10 @@ function renderRoomBar() {
   if (!bar) return;
   if (!state || !state.code) { bar.innerHTML = ''; return; }
   const isHost = state.players[0] && state.players[0].id === myId;
+  const me = state.players.find(p => p.id === myId);
+  const showResources = me && state.phase !== 'lobby';
   bar.innerHTML = `
-    <span class="muted">Sala ${state.code}</span>
+    <span class="muted">Sala ${state.code}${showResources ? ` · 💰 ${me.resources || 0}` : ''}</span>
     <span class="roomBarBtns">
       ${isHost ? `<button class="tiny secondary" id="restartBtn">🔄 Reiniciar</button>` : ''}
       <button class="tiny secondary" id="exitBtn">🚪 Salir</button>
@@ -437,6 +498,15 @@ function renderLobby() {
       </div>
     </div>
     <div class="card">
+      <h2>❔ Cómo funciona (resumen rápido)</h2>
+      <p class="muted" style="line-height:1.5;">
+        🗺️ <b style="color:var(--text)">Mapa:</b> cada partida genera un país nuevo de 24 territorios en 3 Eras (8 por Era). Al principio solo ves en detalle los de la Era I — el resto del país ya se ve en el mapa, pero como zonas 🔒 sin abrir, que se revelan al llegar su Era.<br><br>
+        ⚔️ <b style="color:var(--text)">Combate:</b> atacas desde un territorio tuyo a un vecino, tirando dados estilo Risk. Si ganas, lo conquistas; si pierdes, solo pierdes las bajas.<br><br>
+        💰 <b style="color:var(--text)">Recursos:</b> cada territorio que controlas te da 1 Recurso por ronda.<br><br>
+        ⬆️ <b style="color:var(--text)">Mejoras:</b> gasta Recursos para subir de nivel tus tropas de cada Época (hasta nivel 3) — la mejora es para siempre y se aplica a todas tus tropas de ese tipo. Cada nivel se explica en detalle durante la partida.
+      </p>
+    </div>
+    <div class="card">
       <h2>Elige tu Arquetipo</h2>
       ${archOptions.map(a => {
         const arch = state.archetypes[a];
@@ -467,8 +537,10 @@ function renderEraIntro() {
       <p class="flavor">${state.eraInfo.flavor}</p>
     </div>
     ${renderBoard()}
+    ${renderTroopPanel()}
     <button id="cont">Continuar</button>
   `;
+  wireTroopPanel();
   document.getElementById('cont').onclick = () => call('continue');
 }
 
@@ -528,7 +600,9 @@ function renderOrders() {
         ${portraitFrame(c, 'small')}
         <span class="muted"><b style="color:var(--text)">${c.name}</b> — ${c.flavor}</span>
       </div>`).join('')}</div>` : ''}
+    ${renderTroopPanel()}
   `;
+  wireTroopPanel();
   if (submitted) return;
 
   function renderAttackFrom() {
@@ -639,8 +713,10 @@ function renderResolve() {
       <div class="log">${(state.resolveLog || []).map(l => `<div>${l}</div>`).join('')}</div>
     </div>
     ${renderBoard()}
+    ${renderTroopPanel()}
     ${isHost ? `<button id="cont">Continuar</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}
   `;
+  wireTroopPanel();
   const btn = document.getElementById('cont');
   if (btn) btn.onclick = () => call('continue');
 }
@@ -712,9 +788,10 @@ function renderFin() {
 const ERA_LABELS = { 1: 'Era I', 2: 'Era II', 3: 'Era III' };
 function renderBoard() {
   const eras = [1, 2, 3];
-  const openTerrs = Object.values(state.territories).filter(t => t.open);
+  const allTerrs = Object.values(state.territories);
+  const openTerrs = allTerrs.filter(t => t.open);
   return `<div class="card"><h2>Tablero</h2>
-    ${renderMapSvg(openTerrs)}
+    ${renderMapSvg(allTerrs)}
     ${eras.map(e => {
       const terrs = openTerrs.filter(t => t.era === e);
       if (!terrs.length) return '';
@@ -739,57 +816,6 @@ function hashStr(s) {
   return h;
 }
 
-// Coloca cada territorio en (x,y): Era I en la fila de arriba, y cada territorio de una Era
-// posterior se sitúa cerca de su "puente" (el vecino de la Era anterior del que viene) — así los
-// territorios conectados quedan geométricamente cerca, y el mapa se lee como una zona que crece
-// hacia abajo en vez de una fila de puntos sueltos sin relación entre sí.
-function computeMapLayout(openTerrs, W, rowH, padTop) {
-  const byId = {};
-  openTerrs.forEach(t => { byId[t.id] = t; });
-  const byEra = { 1: [], 2: [], 3: [] };
-  openTerrs.forEach(t => { if (byEra[t.era]) byEra[t.era].push(t); });
-  const eras = [1, 2, 3].filter(e => byEra[e].length);
-
-  const pos = {};
-  eras.forEach((e, rowIdx) => {
-    const list = byEra[e];
-    const inEra = new Set(list.map(t => t.id));
-    let order;
-    if (rowIdx === 0) {
-      // Primera fila: recorrido en anchura por el grafo de esa Era, para que los vecinos
-      // queden próximos en el eje X.
-      order = [];
-      const visited = new Set();
-      const queue = [list[0].id];
-      visited.add(list[0].id);
-      while (queue.length) {
-        const id = queue.shift();
-        order.push(byId[id]);
-        (byId[id].neighbors || []).forEach(nId => {
-          if (inEra.has(nId) && !visited.has(nId)) { visited.add(nId); queue.push(nId); }
-        });
-      }
-      list.forEach(t => { if (!visited.has(t.id)) { visited.add(t.id); order.push(t); } });
-    } else {
-      // Filas siguientes: cada territorio se ordena según la X de su vecino de la Era anterior.
-      order = [...list].sort((a, b) => {
-        const pa = (a.neighbors || []).find(nId => byId[nId] && byId[nId].era === a.era - 1);
-        const pb = (b.neighbors || []).find(nId => byId[nId] && byId[nId].era === b.era - 1);
-        const xa = pa && pos[pa] ? pos[pa].x : W / 2;
-        const xb = pb && pos[pb] ? pos[pb].x : W / 2;
-        return xa - xb;
-      });
-    }
-    const y = padTop + rowIdx * rowH;
-    order.forEach((t, i) => {
-      const x = W * (i + 1) / (order.length + 1);
-      const jitter = (hashStr(t.id) % 5) - 2;
-      pos[t.id] = { x, y: y + jitter * 3, t };
-    });
-  });
-  return { pos, eras };
-}
-
 // Paleta de "terreno" para territorios SIN dueño — apagada y terrosa, para que se note que no es
 // el color vivo de ningún jugador. Así el mapa se ve con color desde el primer turno (como un mapa
 // de verdad), no solo después de que alguien conquiste algo.
@@ -797,12 +823,12 @@ const TERRAIN_PALETTE = ['#3d5a4a', '#4a4530', '#33465c', '#4a3d38', '#3f4a33', 
 function terrainColor(id) { return TERRAIN_PALETTE[hashStr(id) % TERRAIN_PALETTE.length]; }
 
 // Mosaico de "tierra fraccionada" — SIN círculos ni nodos: cada celda de una rejilla se colorea
-// según el territorio abierto más cercano (su color de terreno fijo si es neutral, o el color de
-// su dueño si lo han conquistado), formando fragmentos irregulares tipo mapa político. La frontera
-// entre dos fragmentos distintos se traza siempre; si uno de los dos lados es tuyo se traza en
-// dorado, y si uno de los dos lados es territorio que puedes atacar (frontera con un rival o zona
-// libre junto a lo tuyo) se traza en rojo — así no hace falta ningún círculo para ver ni de quién
-// es cada fragmento ni cuáles puedes conquistar.
+// según el territorio más cercano (su color de terreno fijo si es neutral, el color de su dueño si
+// lo han conquistado, o un tono de niebla si su Era todavía no ha empezado), formando fragmentos
+// irregulares tipo mapa político. La frontera entre dos fragmentos distintos se traza siempre; si
+// uno de los dos lados es tuyo se traza en dorado, si uno de los dos lados es territorio que puedes
+// atacar se traza en rojo, y si cualquiera de los dos lados sigue en niebla se traza discreta — así
+// no hace falta ningún círculo para ver ni de quién es cada fragmento ni cuáles puedes conquistar.
 function renderTerritoryShading(pos, W, H, mine, threatened) {
   const cell = 14;
   const nodes = Object.values(pos);
@@ -824,6 +850,7 @@ function renderTerritoryShading(pos, W, H, mine, threatened) {
     zoneAt.push(row);
   }
   const edgeColor = (a, b) => {
+    if (!a.open || !b.open) return ['#0d0b12', 1, 0.55];
     if (a.owner === myId || b.owner === myId) return ['var(--accent)', 2.2, 1];
     if (threatened.has(a.id) || threatened.has(b.id)) return ['#ff6b6b', 1.8, 0.95];
     return ['#171220', 1.1, 0.7];
@@ -832,9 +859,10 @@ function renderTerritoryShading(pos, W, H, mine, threatened) {
   for (let ry = 0; ry < rows; ry++) {
     for (let cx = 0; cx < cols; cx++) {
       const t = zoneAt[ry][cx];
-      const color = t.owner ? colorFor(t.owner) : terrainColor(t.id);
-      const op = t.owner ? 0.5 : 0.34;
-      rects += `<rect class="zone-cell" data-terr="${t.id}" onclick="focusTerritory('${t.id}')" x="${cx * cell}" y="${ry * cell}" width="${cell + 0.6}" height="${cell + 0.6}" fill="${color}" opacity="${op}" />`;
+      const color = !t.open ? '#221f2b' : (t.owner ? colorFor(t.owner) : terrainColor(t.id));
+      const op = !t.open ? 0.55 : (t.owner ? 0.5 : 0.34);
+      const click = t.open ? `focusTerritory('${t.id}')` : `peekTerritory('${t.id}')`;
+      rects += `<rect class="zone-cell" data-terr="${t.id}" onclick="${click}" x="${cx * cell}" y="${ry * cell}" width="${cell + 0.6}" height="${cell + 0.6}" fill="${color}" opacity="${op}" />`;
       if (cx < cols - 1 && zoneAt[ry][cx + 1].id !== t.id) {
         const [stroke, w, op2] = edgeColor(t, zoneAt[ry][cx + 1]);
         borders += `<line class="zone-border" x1="${(cx + 1) * cell}" y1="${ry * cell}" x2="${(cx + 1) * cell}" y2="${(ry + 1) * cell}" stroke="${stroke}" stroke-width="${w}" opacity="${op2}" />`;
@@ -848,35 +876,47 @@ function renderTerritoryShading(pos, W, H, mine, threatened) {
   return rects + borders;
 }
 
-// Mapa visual fraccionado — SIN círculos ni nodos de grafo: solo fragmentos de terreno coloreado
-// (territorio pintado desde el primer turno; al conquistarlo se repinta con el color del jugador)
-// con el icono y las tropas escritos directamente encima de cada fragmento. La frontera de cada
-// fragmento se pinta en dorado si es tuyo, en rojo si es territorio que puedes atacar (frontera
-// con un rival, o zona libre pegada a lo tuyo), y en gris oscuro en el resto de casos.
-function renderMapSvg(openTerrs) {
-  if (!openTerrs.length) return '';
-  const W = 300, rowH = 78, padTop = 34;
-  const { pos, eras } = computeMapLayout(openTerrs, W, rowH, padTop);
-  const H = padTop + rowH * eras.length + 20;
+// Mapa visual fraccionado — SIN círculos ni nodos de grafo: solo fragmentos de terreno coloreado,
+// usando las coordenadas (x,y) que ya vienen calculadas desde el servidor (mismo layout para todos
+// los jugadores, ver layoutTerritories en server.js). Se dibujan los 24 territorios de la partida
+// —no solo los de la Era actual— así desde el primer turno se ve el país completo: los que aún no
+// se han abierto se pintan como niebla con un candado, y se revelan con su terreno real al llegar
+// su Era, en vez de aparecer de la nada.
+function renderMapSvg(allTerrs) {
+  if (!allTerrs.length) return '';
+  const pos = {};
+  allTerrs.forEach(t => { pos[t.id] = { x: t.x, y: t.y, t }; });
 
-  const mine = new Set(openTerrs.filter(t => t.owner === myId).map(t => t.id));
+  const mine = new Set(allTerrs.filter(t => t.open && t.owner === myId).map(t => t.id));
   const threatened = new Set();
-  openTerrs.forEach(t => {
-    if (mine.has(t.id)) (t.neighbors || []).forEach(nId => { if (!mine.has(nId)) threatened.add(nId); });
+  allTerrs.forEach(t => {
+    if (t.open && mine.has(t.id)) {
+      (t.neighbors || []).forEach(nId => {
+        const n = state.territories[nId];
+        if (n && n.open && !mine.has(nId)) threatened.add(nId);
+      });
+    }
   });
 
-  const labels = Object.values(pos).map(({ x, y, t }) => `
-    <text x="${x}" y="${y - 1}" text-anchor="middle" dominant-baseline="central" font-size="14"
+  const labels = allTerrs.map(t => {
+    const p = pos[t.id];
+    if (!t.open) {
+      return `<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" font-size="11" opacity="0.6"
+        paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">🔒</text>`;
+    }
+    return `
+    <text x="${p.x}" y="${p.y - 1}" text-anchor="middle" dominant-baseline="central" font-size="14"
       paint-order="stroke" stroke="#171220" stroke-width="3" stroke-linejoin="round" style="pointer-events:none;">${t.icon || '📍'}</text>
-    <text x="${x}" y="${y + 15}" text-anchor="middle" font-size="9" fill="#fff"
-      paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">${t.armies}${troopIcon(t.era)}</text>`).join('');
+    <text x="${p.x}" y="${p.y + 15}" text-anchor="middle" font-size="9" fill="#fff"
+      paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">${t.armies}${troopIcon(t.era)}</text>`;
+  }).join('');
 
-  return `<svg class="map-svg" viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; margin-bottom:4px; border-radius:8px; overflow:hidden;">
-    <rect x="0" y="0" width="${W}" height="${H}" fill="#1b1622" />
-    ${renderTerritoryShading(pos, W, H, mine, threatened)}
+  return `<svg class="map-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" style="width:100%; height:auto; display:block; margin-bottom:4px; border-radius:8px; overflow:hidden;">
+    <rect x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="#1b1622" />
+    ${renderTerritoryShading(pos, MAP_W, MAP_H, mine, threatened)}
     ${labels}
   </svg>
-  <div class="map-legend muted">Toca un fragmento para ver su ficha &nbsp; 🟡 borde dorado = tuyo &nbsp; 🔴 borde rojo = territorio que puedes atacar</div>`;
+  <div class="map-legend muted">Toca un fragmento para ver su ficha &nbsp; 🟡 dorado = tuyo &nbsp; 🔴 rojo = puedes atacarlo &nbsp; 🔒 = aún sin abrir</div>`;
 }
 
 // Al tocar un nodo del mapa, resalta y hace scroll a su ficha detallada en la lista de abajo.
@@ -886,6 +926,14 @@ function focusTerritory(id) {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   el.classList.add('flash');
   setTimeout(() => el.classList.remove('flash'), 900);
+}
+
+// Al tocar un territorio que todavía no se ha abierto, solo avisa de en qué Era aparecerá —
+// no hay ficha detallada que mostrar porque aún no existe como tal en la partida.
+function peekTerritory(id) {
+  const t = state.territories[id];
+  if (!t) return;
+  showError(`🔒 Territorio aún sin abrir — se revela al empezar la ${ERA_LABELS[t.era]}.`);
 }
 
 render();
