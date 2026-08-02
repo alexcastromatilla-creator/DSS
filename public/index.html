@@ -81,6 +81,18 @@
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
   .territories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .territory { background: #241d2e; border-radius: 8px; padding: 8px; font-size: 0.8rem; border: 2px solid transparent; transition: border-color 0.3s ease; }
+  .era-label { color: var(--accent); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; margin: 8px 0 4px; text-transform: uppercase; opacity: 0.85; }
+  .unit-icons { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 1px; vertical-align: middle; margin-top: 3px; }
+  .unit-icon { font-size: 1rem; line-height: 1; display: inline-block; animation: idleFloat 3.2s ease-in-out infinite; }
+  .unit-icons b { margin-left: 5px; color: var(--accent); font-size: 0.78rem; font-weight: 700; }
+  .map-legend { font-size: 0.7rem; line-height: 1.5; margin-bottom: 10px; }
+  .map-node { cursor: pointer; }
+  .map-node:active circle:first-of-type { opacity: 0.8; }
+  @keyframes flashPulse {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: scale(1); }
+    50% { box-shadow: 0 0 0 3px var(--accent), 0 2px 10px rgba(0,0,0,0.4); transform: scale(1.03); }
+  }
+  .territory.flash { animation: flashPulse 0.9s ease-in-out; }
   .log { font-size: 0.85rem; color: #cbc2d9; max-height: 160px; overflow-y: auto; }
   .log div { padding: 4px 0; border-bottom: 1px solid #382e48; animation: fadeSlideIn 0.25s ease-out; }
   .timer { text-align: center; font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; }
@@ -193,6 +205,22 @@ function troopWord(era, count) {
   const t = state && state.troopTypes && state.troopTypes[era];
   if (!t) return count === 1 ? 'legión' : 'legiones';
   return count === 1 ? t.singular : t.plural;
+}
+function troopIcon(era) {
+  const t = state && state.troopTypes && state.troopTypes[era];
+  return (t && t.icon) || '🛡️';
+}
+// Fila visual de unidades: repite el icono de tropa (según la Época del territorio) una vez por
+// soldado, hasta un máximo legible, y añade el número exacto — así el tablero se ve con "soldados"
+// encima en vez de solo una cifra suelta.
+function unitBadge(era, count) {
+  const icon = troopIcon(era);
+  const n = Math.max(0, count || 0);
+  if (!n) return `<span class="unit-icons muted">sin tropas</span>`;
+  const cap = 6;
+  const shown = Math.min(n, cap);
+  const icons = Array.from({ length: shown }, (_, i) => `<span class="unit-icon" style="animation-delay:${(i * 0.15).toFixed(2)}s">${icon}</span>`).join('');
+  return `<span class="unit-icons">${icons}<b>×${n}</b></span>`;
 }
 // Marco de "cuadro pintado" para un Personaje: muestra la ilustración real si existe en
 // public/images/<portrait>; si no está (o falla al cargar), se ve el icono con el mismo marco.
@@ -681,21 +709,112 @@ function renderFin() {
   if (btn) btn.onclick = () => call('restart_room');
 }
 
+const ERA_LABELS = { 1: 'Era I', 2: 'Era II', 3: 'Era III' };
 function renderBoard() {
   const eras = [1, 2, 3];
+  const openTerrs = Object.values(state.territories).filter(t => t.open);
   return `<div class="card"><h2>Tablero</h2>
+    ${renderMapSvg(openTerrs)}
     ${eras.map(e => {
-      const terrs = Object.values(state.territories).filter(t => t.era === e && t.open);
+      const terrs = openTerrs.filter(t => t.era === e);
       if (!terrs.length) return '';
-      return `<div class="territories" style="margin-bottom:8px;">
+      return `<div class="era-label">${ERA_LABELS[e]} · ${troopIcon(e)} ${troopWord(e, 2)}</div>
+      <div class="territories" style="margin-bottom:8px;">
         ${terrs.map(t => `
-          <div class="territory" style="border-color:${t.owner ? colorFor(t.owner) : '#4a3f5c'}">
+          <div class="territory" id="terr-${t.id}" style="border-color:${t.owner ? colorFor(t.owner) : '#4a3f5c'}">
             <b>${t.icon || ''} ${t.name}</b><br>
-            <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'} · ${t.armies} 🛡️</span>
+            <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'}${t.owner === myId ? ' · tuyo' : ''}</span><br>
+            ${unitBadge(e, t.armies)}
           </div>`).join('')}
       </div>`;
     }).join('')}
   </div>`;
+}
+
+// Hash simple y determinista (mismo id -> mismo número siempre) solo para dar un pequeño
+// desplazamiento vertical a cada nodo del mapa, así las filas no quedan perfectamente rectas.
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+// Mapa visual real: un nodo por territorio abierto (agrupados en filas por Era) con una línea
+// por cada conexión del grafo de vecinos que genera el servidor — así se ve de un vistazo qué
+// territorios hacen frontera entre sí (= lo que se puede conquistar), de quién es cada uno
+// (color del dueño) y cuáles son tuyos (anillo dorado) o fronterizos con un rival (anillo rojo).
+function renderMapSvg(openTerrs) {
+  if (!openTerrs.length) return '';
+  const W = 300, rowH = 84, padTop = 38, r = 20;
+  const byEra = { 1: [], 2: [], 3: [] };
+  openTerrs.forEach(t => { if (byEra[t.era]) byEra[t.era].push(t); });
+  const eras = [1, 2, 3].filter(e => byEra[e].length);
+  const H = padTop + rowH * eras.length;
+
+  const pos = {};
+  eras.forEach((e, rowIdx) => {
+    const list = byEra[e];
+    const n = list.length;
+    list.forEach((t, i) => {
+      const x = W * (i + 1) / (n + 1);
+      const jitter = (hashStr(t.id) % 5) - 2;
+      const y = padTop + rowIdx * rowH + jitter * 4;
+      pos[t.id] = { x, y, t };
+    });
+  });
+
+  const mine = new Set(openTerrs.filter(t => t.owner === myId).map(t => t.id));
+  const threatened = new Set();
+  openTerrs.forEach(t => {
+    if (mine.has(t.id)) (t.neighbors || []).forEach(nId => { if (!mine.has(nId)) threatened.add(nId); });
+  });
+
+  const seen = new Set();
+  const lines = [];
+  openTerrs.forEach(t => {
+    if (!pos[t.id]) return;
+    (t.neighbors || []).forEach(nId => {
+      if (!pos[nId]) return;
+      const key = [t.id, nId].sort().join('|');
+      if (seen.has(key)) return;
+      seen.add(key);
+      const a = pos[t.id], b = pos[nId];
+      lines.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#584a70" stroke-width="2" />`);
+    });
+  });
+
+  const nodes = Object.values(pos).map(({ x, y, t }) => {
+    const owned = mine.has(t.id);
+    const isThreatened = !owned && threatened.has(t.id);
+    const fill = t.owner ? colorFor(t.owner) : '#3a3050';
+    let ring = '';
+    if (owned) {
+      ring = `<circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="var(--accent)" stroke-width="2.5" opacity="0.85"><animate attributeName="r" values="${r + 4};${r + 7};${r + 4}" dur="1.8s" repeatCount="indefinite" /></circle>`;
+    } else if (isThreatened) {
+      ring = `<circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="4,3" opacity="0.75" />`;
+    }
+    return `<g class="map-node" onclick="focusTerritory('${t.id}')">
+      ${ring}
+      <circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${t.owner ? '#1b1622' : '#584a70'}" stroke-width="2" ${t.owner ? '' : 'stroke-dasharray="3,3"'} />
+      <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="16">${t.icon || '📍'}</text>
+      <text x="${x}" y="${y + r + 13}" text-anchor="middle" font-size="9.5" fill="#cbc2d9">${t.armies}${troopIcon(t.era)}</text>
+    </g>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; margin-bottom:4px;">
+    ${lines.join('')}
+    ${nodes}
+  </svg>
+  <div class="map-legend muted">🟡 anillo brillante = tuyo &nbsp; 🔴 borde rojo = frontera con un rival (se puede atacar) &nbsp; borde punteado = neutral</div>`;
+}
+
+// Al tocar un nodo del mapa, resalta y hace scroll a su ficha detallada en la lista de abajo.
+function focusTerritory(id) {
+  const el = document.getElementById('terr-' + id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 900);
 }
 
 render();
