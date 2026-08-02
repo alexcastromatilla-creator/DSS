@@ -1,0 +1,10 @@
+{
+  "name": "el-banquete",
+  "version": "1.0.0",
+  "description": "El Banquete - juego de conquista, historia y brindis para 3 jugadores. Sin dependencias: solo Node.js.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {}
+}
