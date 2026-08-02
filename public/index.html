@@ -86,8 +86,8 @@
   .unit-icon { font-size: 1rem; line-height: 1; display: inline-block; animation: idleFloat 3.2s ease-in-out infinite; }
   .unit-icons b { margin-left: 5px; color: var(--accent); font-size: 0.78rem; font-weight: 700; }
   .map-legend { font-size: 0.7rem; line-height: 1.5; margin-bottom: 10px; }
-  .map-node { cursor: pointer; }
-  .map-node:active circle:first-of-type { opacity: 0.8; }
+  .zone-cell { cursor: pointer; }
+  .zone-cell:active { opacity: 0.7 !important; }
   @keyframes flashPulse {
     0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: scale(1); }
     50% { box-shadow: 0 0 0 3px var(--accent), 0 2px 10px rgba(0,0,0,0.4); transform: scale(1.03); }
@@ -739,29 +739,125 @@ function hashStr(s) {
   return h;
 }
 
-// Mapa visual real: un nodo por territorio abierto (agrupados en filas por Era) con una línea
-// por cada conexión del grafo de vecinos que genera el servidor — así se ve de un vistazo qué
-// territorios hacen frontera entre sí (= lo que se puede conquistar), de quién es cada uno
-// (color del dueño) y cuáles son tuyos (anillo dorado) o fronterizos con un rival (anillo rojo).
-function renderMapSvg(openTerrs) {
-  if (!openTerrs.length) return '';
-  const W = 300, rowH = 84, padTop = 38, r = 20;
+// Coloca cada territorio en (x,y): Era I en la fila de arriba, y cada territorio de una Era
+// posterior se sitúa cerca de su "puente" (el vecino de la Era anterior del que viene) — así los
+// territorios conectados quedan geométricamente cerca, y el mapa se lee como una zona que crece
+// hacia abajo en vez de una fila de puntos sueltos sin relación entre sí.
+function computeMapLayout(openTerrs, W, rowH, padTop) {
+  const byId = {};
+  openTerrs.forEach(t => { byId[t.id] = t; });
   const byEra = { 1: [], 2: [], 3: [] };
   openTerrs.forEach(t => { if (byEra[t.era]) byEra[t.era].push(t); });
   const eras = [1, 2, 3].filter(e => byEra[e].length);
-  const H = padTop + rowH * eras.length;
 
   const pos = {};
   eras.forEach((e, rowIdx) => {
     const list = byEra[e];
-    const n = list.length;
-    list.forEach((t, i) => {
-      const x = W * (i + 1) / (n + 1);
+    const inEra = new Set(list.map(t => t.id));
+    let order;
+    if (rowIdx === 0) {
+      // Primera fila: recorrido en anchura por el grafo de esa Era, para que los vecinos
+      // queden próximos en el eje X.
+      order = [];
+      const visited = new Set();
+      const queue = [list[0].id];
+      visited.add(list[0].id);
+      while (queue.length) {
+        const id = queue.shift();
+        order.push(byId[id]);
+        (byId[id].neighbors || []).forEach(nId => {
+          if (inEra.has(nId) && !visited.has(nId)) { visited.add(nId); queue.push(nId); }
+        });
+      }
+      list.forEach(t => { if (!visited.has(t.id)) { visited.add(t.id); order.push(t); } });
+    } else {
+      // Filas siguientes: cada territorio se ordena según la X de su vecino de la Era anterior.
+      order = [...list].sort((a, b) => {
+        const pa = (a.neighbors || []).find(nId => byId[nId] && byId[nId].era === a.era - 1);
+        const pb = (b.neighbors || []).find(nId => byId[nId] && byId[nId].era === b.era - 1);
+        const xa = pa && pos[pa] ? pos[pa].x : W / 2;
+        const xb = pb && pos[pb] ? pos[pb].x : W / 2;
+        return xa - xb;
+      });
+    }
+    const y = padTop + rowIdx * rowH;
+    order.forEach((t, i) => {
+      const x = W * (i + 1) / (order.length + 1);
       const jitter = (hashStr(t.id) % 5) - 2;
-      const y = padTop + rowIdx * rowH + jitter * 4;
-      pos[t.id] = { x, y, t };
+      pos[t.id] = { x, y: y + jitter * 3, t };
     });
   });
+  return { pos, eras };
+}
+
+// Paleta de "terreno" para territorios SIN dueño — apagada y terrosa, para que se note que no es
+// el color vivo de ningún jugador. Así el mapa se ve con color desde el primer turno (como un mapa
+// de verdad), no solo después de que alguien conquiste algo.
+const TERRAIN_PALETTE = ['#3d5a4a', '#4a4530', '#33465c', '#4a3d38', '#3f4a33', '#3a3550'];
+function terrainColor(id) { return TERRAIN_PALETTE[hashStr(id) % TERRAIN_PALETTE.length]; }
+
+// Mosaico de "tierra fraccionada" — SIN círculos ni nodos: cada celda de una rejilla se colorea
+// según el territorio abierto más cercano (su color de terreno fijo si es neutral, o el color de
+// su dueño si lo han conquistado), formando fragmentos irregulares tipo mapa político. La frontera
+// entre dos fragmentos distintos se traza siempre; si uno de los dos lados es tuyo se traza en
+// dorado, y si uno de los dos lados es territorio que puedes atacar (frontera con un rival o zona
+// libre junto a lo tuyo) se traza en rojo — así no hace falta ningún círculo para ver ni de quién
+// es cada fragmento ni cuáles puedes conquistar.
+function renderTerritoryShading(pos, W, H, mine, threatened) {
+  const cell = 14;
+  const nodes = Object.values(pos);
+  if (!nodes.length) return '';
+  const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
+  const zoneAt = [];
+  for (let ry = 0; ry < rows; ry++) {
+    const row = [];
+    for (let cx = 0; cx < cols; cx++) {
+      const px = cx * cell + cell / 2, py = ry * cell + cell / 2;
+      let best = nodes[0], bestDist = Infinity;
+      for (const n of nodes) {
+        const dx = n.x - px, dy = n.y - py;
+        const d = dx * dx + dy * dy;
+        if (d < bestDist) { bestDist = d; best = n; }
+      }
+      row.push(best.t);
+    }
+    zoneAt.push(row);
+  }
+  const edgeColor = (a, b) => {
+    if (a.owner === myId || b.owner === myId) return ['var(--accent)', 2.2, 1];
+    if (threatened.has(a.id) || threatened.has(b.id)) return ['#ff6b6b', 1.8, 0.95];
+    return ['#171220', 1.1, 0.7];
+  };
+  let rects = '', borders = '';
+  for (let ry = 0; ry < rows; ry++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const t = zoneAt[ry][cx];
+      const color = t.owner ? colorFor(t.owner) : terrainColor(t.id);
+      const op = t.owner ? 0.5 : 0.34;
+      rects += `<rect class="zone-cell" data-terr="${t.id}" onclick="focusTerritory('${t.id}')" x="${cx * cell}" y="${ry * cell}" width="${cell + 0.6}" height="${cell + 0.6}" fill="${color}" opacity="${op}" />`;
+      if (cx < cols - 1 && zoneAt[ry][cx + 1].id !== t.id) {
+        const [stroke, w, op2] = edgeColor(t, zoneAt[ry][cx + 1]);
+        borders += `<line class="zone-border" x1="${(cx + 1) * cell}" y1="${ry * cell}" x2="${(cx + 1) * cell}" y2="${(ry + 1) * cell}" stroke="${stroke}" stroke-width="${w}" opacity="${op2}" />`;
+      }
+      if (ry < rows - 1 && zoneAt[ry + 1][cx].id !== t.id) {
+        const [stroke, w, op2] = edgeColor(t, zoneAt[ry + 1][cx]);
+        borders += `<line class="zone-border" x1="${cx * cell}" y1="${(ry + 1) * cell}" x2="${(cx + 1) * cell}" y2="${(ry + 1) * cell}" stroke="${stroke}" stroke-width="${w}" opacity="${op2}" />`;
+      }
+    }
+  }
+  return rects + borders;
+}
+
+// Mapa visual fraccionado — SIN círculos ni nodos de grafo: solo fragmentos de terreno coloreado
+// (territorio pintado desde el primer turno; al conquistarlo se repinta con el color del jugador)
+// con el icono y las tropas escritos directamente encima de cada fragmento. La frontera de cada
+// fragmento se pinta en dorado si es tuyo, en rojo si es territorio que puedes atacar (frontera
+// con un rival, o zona libre pegada a lo tuyo), y en gris oscuro en el resto de casos.
+function renderMapSvg(openTerrs) {
+  if (!openTerrs.length) return '';
+  const W = 300, rowH = 78, padTop = 34;
+  const { pos, eras } = computeMapLayout(openTerrs, W, rowH, padTop);
+  const H = padTop + rowH * eras.length + 20;
 
   const mine = new Set(openTerrs.filter(t => t.owner === myId).map(t => t.id));
   const threatened = new Set();
@@ -769,43 +865,18 @@ function renderMapSvg(openTerrs) {
     if (mine.has(t.id)) (t.neighbors || []).forEach(nId => { if (!mine.has(nId)) threatened.add(nId); });
   });
 
-  const seen = new Set();
-  const lines = [];
-  openTerrs.forEach(t => {
-    if (!pos[t.id]) return;
-    (t.neighbors || []).forEach(nId => {
-      if (!pos[nId]) return;
-      const key = [t.id, nId].sort().join('|');
-      if (seen.has(key)) return;
-      seen.add(key);
-      const a = pos[t.id], b = pos[nId];
-      lines.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#584a70" stroke-width="2" />`);
-    });
-  });
+  const labels = Object.values(pos).map(({ x, y, t }) => `
+    <text x="${x}" y="${y - 1}" text-anchor="middle" dominant-baseline="central" font-size="14"
+      paint-order="stroke" stroke="#171220" stroke-width="3" stroke-linejoin="round" style="pointer-events:none;">${t.icon || '📍'}</text>
+    <text x="${x}" y="${y + 15}" text-anchor="middle" font-size="9" fill="#fff"
+      paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">${t.armies}${troopIcon(t.era)}</text>`).join('');
 
-  const nodes = Object.values(pos).map(({ x, y, t }) => {
-    const owned = mine.has(t.id);
-    const isThreatened = !owned && threatened.has(t.id);
-    const fill = t.owner ? colorFor(t.owner) : '#3a3050';
-    let ring = '';
-    if (owned) {
-      ring = `<circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="var(--accent)" stroke-width="2.5" opacity="0.85"><animate attributeName="r" values="${r + 4};${r + 7};${r + 4}" dur="1.8s" repeatCount="indefinite" /></circle>`;
-    } else if (isThreatened) {
-      ring = `<circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-dasharray="4,3" opacity="0.75" />`;
-    }
-    return `<g class="map-node" onclick="focusTerritory('${t.id}')">
-      ${ring}
-      <circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${t.owner ? '#1b1622' : '#584a70'}" stroke-width="2" ${t.owner ? '' : 'stroke-dasharray="3,3"'} />
-      <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="16">${t.icon || '📍'}</text>
-      <text x="${x}" y="${y + r + 13}" text-anchor="middle" font-size="9.5" fill="#cbc2d9">${t.armies}${troopIcon(t.era)}</text>
-    </g>`;
-  }).join('');
-
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; margin-bottom:4px;">
-    ${lines.join('')}
-    ${nodes}
+  return `<svg class="map-svg" viewBox="0 0 ${W} ${H}" style="width:100%; height:auto; display:block; margin-bottom:4px; border-radius:8px; overflow:hidden;">
+    <rect x="0" y="0" width="${W}" height="${H}" fill="#1b1622" />
+    ${renderTerritoryShading(pos, W, H, mine, threatened)}
+    ${labels}
   </svg>
-  <div class="map-legend muted">🟡 anillo brillante = tuyo &nbsp; 🔴 borde rojo = frontera con un rival (se puede atacar) &nbsp; borde punteado = neutral</div>`;
+  <div class="map-legend muted">Toca un fragmento para ver su ficha &nbsp; 🟡 borde dorado = tuyo &nbsp; 🔴 borde rojo = territorio que puedes atacar</div>`;
 }
 
 // Al tocar un nodo del mapa, resalta y hace scroll a su ficha detallada en la lista de abajo.
