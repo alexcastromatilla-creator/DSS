@@ -24,20 +24,17 @@ Verás `El Banquete escuchando en :3000`. Abre `http://localhost:3000` en un nav
 2. Con los 3 móviles conectados a la misma red wifi, abrid `http://192.168.1.23:3000` (con tu IP) en cada uno.
 3. Uno crea la sala, os pasa el código de 4 letras, los otros dos se unen.
 
-### Opción B — cada uno desde su casa (por internet)
+### Opción B — un enlace permanente, jugable desde cualquier sitio
 
-Necesitas desplegar el servidor en algún sitio con IP pública. Es gratis y tarda 5 minutos:
+Sigue **`DEPLOY_RENDER.md`** (incluido en esta carpeta) — son dos webs y un rato de clics, sin terminal ni saber programar, y al final tenéis una URL fija tipo `https://el-banquete.onrender.com` que podéis guardar y reutilizar siempre.
 
-1. Crea una cuenta en [Render](https://render.com) (o Railway/Fly.io, todos tienen capa gratuita).
-2. "New Web Service" → conecta este código (puedes subirlo a un repo de GitHub primero, o usar la opción de subir el zip directamente).
-3. Build command: (vacío, no hace falta). Start command: `node server.js`.
-4. Al desplegar te da una URL pública tipo `https://el-banquete.onrender.com` — esa es la que abrís los 3 desde vuestros móviles.
+## Jugar solo/a contra bots (para probar el juego)
 
-Si solo queréis probarlo una vez sin desplegar nada permanente, también podéis correr el servidor en un ordenador y exponerlo con un túnel como `ngrok http 3000` (gratis, da una URL temporal).
+Ya no hace falta esperar a tener 2 amigos disponibles para probarlo. En la pantalla inicial, al crear sala, eliges cuántos jugadores en total (2 a 6) y cuántos de ellos son bots — por defecto te propone "tú + el resto bots" para que puedas testear una partida completa tú solo/a. Los bots eligen arquetipo, responden trivia, envían órdenes y participan en los Desafíos de forma automática (con un pequeño retraso, para que se sienta natural).
 
 ## Cómo se juega
 
-1. **Lobby:** el anfitrión crea la sala y comparte el código. Los otros dos se unen. Cada uno elige su Arquetipo (Filósofo, Estratega o Diplomático).
+1. **Lobby:** el anfitrión crea la sala (eligiendo nº de jugadores y de bots) y comparte el código con los jugadores humanos que falten — los bots ya están dentro. Cada uno elige su Arquetipo: ahora hay 6 disponibles (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante), cada uno con un icono y un bonus distinto.
 2. **Cada Era** (3 en total) abre 4 territorios nuevos en el tablero y dura 3 rondas.
 3. **Cada ronda:** primero una pregunta de trivia rápida (30 segundos) — acertarla da una ventaja táctica en tu próximo combate. Luego, en secreto desde tu móvil, eliges una orden: **Atacar** un territorio, **Reforzar** uno tuyo, **Reclutar** un Personaje, o **Espiar** a un rival. Se resuelve todo a la vez y el resultado (incluidos los sorbos) se muestra en pantalla.
 4. **Tras la 2ª ronda de cada Era:** un Desafío de grupo (dilema, riesgo o debate) — el componente más "de beber" del juego.
@@ -50,6 +47,7 @@ Las cantidades de sorbos que muestra la app son orientativas — ajustadlas a vu
 
 Comparado con el documento de diseño completo:
 
+- **Arquetipos:** hay 6 implementados (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante) de los que puede haber más en el diseño completo.
 - **Personajes:** cada Era tiene un mazo de 4 (en vez de los ~13-16 del diseño completo). 2 de cada 4 tienen efecto mecánico real en el juego (César, Diógenes, Genghis Khan, Avicena, Maquiavelo, Isabel de Castilla); los otros 2 son cartas de prestigio que dan +1 Gloria.
 - **Desafíos:** hay 3 implementados (Dilema del Prisionero, Encrucijada de Aníbal, Debate de Atenas) que rotan uno por Era, en vez del mazo completo de 8.
 - **Combate:** dados estilo Risk (hasta 3 atacantes vs 2 defensores) con los bonos de Arquetipo y Personaje ya integrados.

@@ -3,12 +3,18 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, TRIVIA, DESAFIOS } = require('./data');
+const { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, TRIVIA, DESAFIOS, BOT_NAMES } = require('./data');
 
 const TRIVIA_TIME = 15000;
 const ORDERS_TIME = 60000;
 const DESAFIO_TIME = 30000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const ARCHETYPE_KEYS = Object.keys(ARCHETYPES);
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 6;
+// Retardo con el que "piensan" los bots, para que no se sienta instantáneo ni lento.
+const BOT_MIN_DELAY = 700;
+const BOT_MAX_DELAY = 2600;
 
 const rooms = {};        // code -> room
 const playerRoom = {};   // playerId -> room code
@@ -33,6 +39,31 @@ function makeCode() {
 
 function newId() {
   return crypto.randomBytes(8).toString('hex');
+}
+
+function makePlayer(id, name, isBot) {
+  return { id, name: name.slice(0, 20), archetype: null, reserve: 0, gloria: 0, characters: [], shield: false, isBot: !!isBot };
+}
+
+function botDelay() {
+  return BOT_MIN_DELAY + Math.random() * (BOT_MAX_DELAY - BOT_MIN_DELAY);
+}
+
+function addBots(room, count) {
+  const usedNames = new Set(room.players.map((p) => p.name));
+  const namePool = [...BOT_NAMES].sort(() => Math.random() - 0.5);
+  const archPool = [...ARCHETYPE_KEYS].sort(() => Math.random() - 0.5);
+  let archIdx = 0;
+  for (let i = 0; i < count; i++) {
+    const id = 'bot_' + newId();
+    let name = namePool.find((n) => !usedNames.has(n)) || `Bot ${i + 1}`;
+    usedNames.add(name);
+    const bot = makePlayer(id, name, true);
+    bot.archetype = archPool[archIdx % archPool.length];
+    archIdx++;
+    room.players.push(bot);
+    playerRoom[id] = room.code;
+  }
 }
 
 function freshTerritories() {
@@ -86,7 +117,7 @@ function hasAdjacentOwned(room, playerId, targetId) {
 }
 
 function publicPlayer(p) {
-  return { id: p.id, name: p.name, archetype: p.archetype, gloria: p.gloria, reserve: p.reserve, characterCount: p.characters.length };
+  return { id: p.id, name: p.name, archetype: p.archetype, gloria: p.gloria, reserve: p.reserve, characterCount: p.characters.length, isBot: !!p.isBot };
 }
 
 function publicState(room) {
@@ -95,6 +126,8 @@ function publicState(room) {
     phase: room.phase,
     era: room.era,
     round: room.round || null,
+    maxPlayers: room.maxPlayers,
+    archetypes: ARCHETYPES,
     eraInfo: ERA_INFO[room.era],
     territories: room.territories,
     players: room.players.map(publicPlayer),
@@ -151,6 +184,7 @@ function runStep(room) {
     room.firstCorrect = null;
     room.phaseEndsAt = Date.now() + TRIVIA_TIME;
     emitRoom(room);
+    scheduleBots(room);
     room.timer = setTimeout(() => advanceStep(room), TRIVIA_TIME);
     return;
   }
@@ -159,6 +193,7 @@ function runStep(room) {
     room.orders = {};
     room.phaseEndsAt = Date.now() + ORDERS_TIME;
     emitRoom(room);
+    scheduleBots(room);
     room.timer = setTimeout(() => resolveOrders(room), ORDERS_TIME);
     return;
   }
@@ -168,6 +203,7 @@ function runStep(room) {
     room.desafioResponses = {};
     room.phaseEndsAt = Date.now() + DESAFIO_TIME;
     emitRoom(room);
+    scheduleBots(room);
     room.timer = setTimeout(() => resolveDesafio(room), DESAFIO_TIME);
     return;
   }
@@ -216,6 +252,62 @@ function advanceStep(room) {
 
 function allAnswered(room) { return Object.keys(room.questionAnswers).length >= room.players.length; }
 function allOrdered(room) { return Object.keys(room.orders).length >= room.players.length; }
+
+// ---------- IA de los bots ----------
+
+function botPickOrder(room, bot) {
+  const territories = Object.values(room.territories).filter((t) => t.open);
+  const mine = territories.filter((t) => t.owner === bot.id);
+  const others = territories.filter((t) => t.owner !== bot.id);
+  const reachable = others.filter((t) => {
+    const isBootstrap = room.round === 1 && t.era === room.era && t.owner === null;
+    return isBootstrap || hasAdjacentOwned(room, bot.id, t.id);
+  });
+  const roll = Math.random();
+
+  if (bot.reserve >= 1 && reachable.length && roll < 0.45) {
+    const target = reachable[Math.floor(Math.random() * reachable.length)];
+    const amount = Math.max(1, Math.min(bot.reserve, 1 + Math.floor(Math.random() * 2)));
+    return { type: 'atacar', to: target.id, amount };
+  }
+  if (bot.reserve >= 1 && mine.length && roll < 0.65) {
+    const target = mine[Math.floor(Math.random() * mine.length)];
+    const amount = Math.max(1, Math.min(bot.reserve, 1 + Math.floor(Math.random() * 2)));
+    return { type: 'reforzar', territoryId: target.id, amount };
+  }
+  if (roll < 0.85) return { type: 'reclutar' };
+  const others_ = room.players.filter((p) => p.id !== bot.id);
+  if (others_.length) return { type: 'espiar', targetId: others_[Math.floor(Math.random() * others_.length)].id };
+  return { type: 'reclutar' };
+}
+
+function scheduleBots(room) {
+  const phase = room.phase;
+  const bots = room.players.filter((p) => p.isBot);
+  for (const bot of bots) {
+    setTimeout(() => {
+      const r = rooms[room.code];
+      if (!r || r.phase !== phase) return; // la fase ya cambió, no hacer nada
+      if (phase === 'trivia') {
+        const idx = Math.floor(Math.random() * r.currentQuestion.options.length);
+        actions.submit_answer({ optionIndex: idx }, { playerId: bot.id });
+      } else if (phase === 'orders') {
+        const order = botPickOrder(r, bot);
+        actions.submit_order({ order }, { playerId: bot.id });
+      } else if (phase === 'desafio') {
+        const d = r.currentDesafio;
+        let choice;
+        if (d.tipo === 'votacion') {
+          const others = r.players.filter((p) => p.id !== bot.id);
+          choice = others.length ? others[Math.floor(Math.random() * others.length)].id : bot.id;
+        } else {
+          choice = Math.floor(Math.random() * d.opciones.length);
+        }
+        actions.submit_desafio_choice({ choice }, { playerId: bot.id });
+      }
+    }, botDelay());
+  }
+}
 
 function applyCharacterEffect(room, p, card, resolveLog) {
   switch (card.coded) {
@@ -273,8 +365,9 @@ function resolveOrders(room) {
       const t = room.territories[o.territoryId];
       if (t && t.owner === p.id) {
         const amt = Math.max(0, Math.min(o.amount || 0, p.reserve));
-        t.armies += amt; p.reserve -= amt;
-        resolveLog.push(`${p.name} refuerza ${t.name} con ${amt} legiones.`);
+        const bonus = p.archetype === 'comerciante' && amt > 0 ? 1 : 0;
+        t.armies += amt + bonus; p.reserve -= amt;
+        resolveLog.push(`${p.name} refuerza ${t.name} con ${amt} legiones.` + (bonus ? ' (+1 legión gratis del Comerciante)' : ''));
       }
     }
   }
@@ -328,12 +421,14 @@ function resolveOrders(room) {
       p.reserve -= amount;
       const defenderPlayer = t.owner ? playerById(room, t.owner) : null;
       const dBonus = !!(defenderPlayer && (defenderPlayer.archetype === 'filosofo' || defenderPlayer.extraDefenseDie));
-      const aDice = roll(Math.min(amount, 3) + (room.tacticalBonus[p.id] ? 1 : 0));
+      const aBonus = p.archetype === 'explorador' && isBootstrap;
+      const aDice = roll(Math.min(amount, 3) + (room.tacticalBonus[p.id] ? 1 : 0) + (aBonus ? 1 : 0));
       const dDice = roll(Math.min(t.armies, 2) + (dBonus ? 1 : 0));
       let aLoss = 0, dLoss = 0;
       const cmp = Math.min(aDice.length, dDice.length);
       for (let i = 0; i < cmp; i++) { if (aDice[i] > dDice[i]) dLoss++; else aLoss++; }
       if (p.shield && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); p.shield = false; resolveLog.push(`${p.name} usa el escudo de Diógenes y evita 1 baja.`); }
+      if (p.archetype === 'guerrero' && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); resolveLog.push(`${p.name} (Guerrero) evita 1 baja en combate.`); }
       const survivors = amount - aLoss;
       t.armies = Math.max(0, t.armies - dLoss);
 
@@ -406,12 +501,23 @@ function resolveDesafio(room) {
 // ---------- acciones de la API ----------
 
 const actions = {
-  create_room({ name }, ctx) {
+  create_room({ name, maxPlayers, botsWanted }, ctx) {
+    let total = parseInt(maxPlayers, 10);
+    if (!Number.isFinite(total)) total = 3;
+    total = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, total));
+    let bots = parseInt(botsWanted, 10);
+    if (!Number.isFinite(bots)) bots = 0;
+    bots = Math.max(0, Math.min(total - 1, bots));
+
     const code = makeCode();
-    const room = { code, hostId: ctx.playerId, players: [], phase: 'lobby', era: 1, territories: freshTerritories(), log: [], desafioCursor: 0 };
+    const room = {
+      code, hostId: ctx.playerId, players: [], phase: 'lobby', era: 1,
+      territories: freshTerritories(), log: [], desafioCursor: 0, maxPlayers: total,
+    };
     rooms[code] = room;
-    room.players.push({ id: ctx.playerId, name: (name || 'Jugador').slice(0, 20), archetype: null, reserve: 0, gloria: 0, characters: [], shield: false });
+    room.players.push(makePlayer(ctx.playerId, name || 'Jugador', false));
     playerRoom[ctx.playerId] = code;
+    addBots(room, bots);
     emitRoom(room);
     return { ok: true, code };
   },
@@ -420,9 +526,9 @@ const actions = {
     code = (code || '').toUpperCase();
     const room = rooms[code];
     if (!room) return { error: 'Esa sala no existe.' };
-    if (room.players.length >= 3) return { error: 'La sala ya tiene 3 jugadores.' };
+    if (room.players.length >= room.maxPlayers) return { error: `La sala ya tiene ${room.maxPlayers} jugadores.` };
     if (room.phase !== 'lobby') return { error: 'Esa partida ya ha empezado.' };
-    room.players.push({ id: ctx.playerId, name: (name || 'Jugador').slice(0, 20), archetype: null, reserve: 0, gloria: 0, characters: [], shield: false });
+    room.players.push(makePlayer(ctx.playerId, name || 'Jugador', false));
     playerRoom[ctx.playerId] = code;
     emitRoom(room);
     return { ok: true, code };
@@ -441,7 +547,7 @@ const actions = {
   start_game(_, ctx) {
     const room = rooms[playerRoom[ctx.playerId]];
     if (!room || room.hostId !== ctx.playerId) return { error: 'Solo el anfitrión puede empezar.' };
-    if (room.players.length !== 3) return { error: 'Hacen falta 3 jugadores.' };
+    if (room.players.length !== room.maxPlayers) return { error: `Hacen falta ${room.maxPlayers} jugadores.` };
     if (room.players.some((p) => !p.archetype)) return { error: 'Falta elegir Arquetipo.' };
     room.steps = buildEraSteps();
     room.stepIdx = 0;

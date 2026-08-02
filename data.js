@@ -1,20 +1,20 @@
 // Datos del juego: territorios, personajes, trivia y desafíos.
 
 const TERRITORIES = {
-  atenas:       { name: 'Atenas',        era: 1, region: 'Grecia',           resource: 'sabiduria', neighbors: ['esparta', 'alejandria'] },
-  esparta:      { name: 'Esparta',       era: 1, region: 'Grecia',           resource: 'poder',      neighbors: ['atenas', 'roma'] },
-  roma:         { name: 'Roma',          era: 1, region: 'Italia',           resource: 'poder',      neighbors: ['esparta', 'alejandria', 'florencia'] },
-  alejandria:   { name: 'Alejandría',    era: 1, region: 'Egipto',           resource: 'sabiduria', neighbors: ['atenas', 'roma', 'bagdad'] },
+  atenas:       { name: 'Atenas',        era: 1, region: 'Grecia',           resource: 'sabiduria', icon: '🏛️', neighbors: ['esparta', 'alejandria'] },
+  esparta:      { name: 'Esparta',       era: 1, region: 'Grecia',           resource: 'poder',      icon: '🛡️', neighbors: ['atenas', 'roma'] },
+  roma:         { name: 'Roma',          era: 1, region: 'Italia',           resource: 'poder',      icon: '🦅', neighbors: ['esparta', 'alejandria', 'florencia'] },
+  alejandria:   { name: 'Alejandría',    era: 1, region: 'Egipto',           resource: 'sabiduria', icon: '📚', neighbors: ['atenas', 'roma', 'bagdad'] },
 
-  bagdad:       { name: 'Bagdad',        era: 2, region: 'Mesopotamia',      resource: 'sabiduria', neighbors: ['alejandria', 'samarcanda'] },
-  cordoba:      { name: 'Córdoba',       era: 2, region: 'Al-Ándalus',       resource: 'cultura',    neighbors: ['roma', 'tenochtitlan'] },
-  samarcanda:   { name: 'Samarcanda',    era: 2, region: 'Asia Central',     resource: 'comercio',   neighbors: ['bagdad', 'changan'] },
-  changan:      { name: "Chang'an",      era: 2, region: 'China',           resource: 'comercio',   neighbors: ['samarcanda'] },
+  bagdad:       { name: 'Bagdad',        era: 2, region: 'Mesopotamia',      resource: 'sabiduria', icon: '🕌', neighbors: ['alejandria', 'samarcanda'] },
+  cordoba:      { name: 'Córdoba',       era: 2, region: 'Al-Ándalus',       resource: 'cultura',    icon: '🌙', neighbors: ['roma', 'tenochtitlan'] },
+  samarcanda:   { name: 'Samarcanda',    era: 2, region: 'Asia Central',     resource: 'comercio',   icon: '🐫', neighbors: ['bagdad', 'changan'] },
+  changan:      { name: "Chang'an",      era: 2, region: 'China',           resource: 'comercio',   icon: '🏮', neighbors: ['samarcanda'] },
 
-  florencia:    { name: 'Florencia',     era: 3, region: 'Italia',           resource: 'cultura',    neighbors: ['roma', 'paris'] },
-  paris:        { name: 'París',         era: 3, region: 'Francia',         resource: 'cultura',    neighbors: ['florencia', 'tenochtitlan'] },
-  tenochtitlan: { name: 'Tenochtitlan',  era: 3, region: 'Imperio Azteca',   resource: 'poder',      neighbors: ['cordoba', 'paris', 'potosi'] },
-  potosi:       { name: 'Potosí',        era: 3, region: 'Imperio Inca',     resource: 'comercio',   neighbors: ['tenochtitlan'] },
+  florencia:    { name: 'Florencia',     era: 3, region: 'Italia',           resource: 'cultura',    icon: '🎨', neighbors: ['roma', 'paris'] },
+  paris:        { name: 'París',         era: 3, region: 'Francia',         resource: 'cultura',    icon: '⚜️', neighbors: ['florencia', 'tenochtitlan'] },
+  tenochtitlan: { name: 'Tenochtitlan',  era: 3, region: 'Imperio Azteca',   resource: 'poder',      icon: '🌞', neighbors: ['cordoba', 'paris', 'potosi'] },
+  potosi:       { name: 'Potosí',        era: 3, region: 'Imperio Inca',     resource: 'comercio',   icon: '⛰️', neighbors: ['tenochtitlan'] },
 };
 
 const ERA_INFO = [
@@ -25,30 +25,35 @@ const ERA_INFO = [
 ];
 
 const ARCHETYPES = {
-  filosofo: { name: 'El Filósofo', desc: '+1 dado siempre que defiendes un territorio.' },
-  estratega: { name: 'El Estratega', desc: 'Al Espiar, además de ver el ejército rival, ganas 1 legión extra de reserva.' },
-  diplomatico: { name: 'El Diplomático', desc: 'Cuando ganas un Desafío de votación, tu recompensa de Gloria se duplica.' },
+  filosofo: { name: 'El Filósofo', desc: '+1 dado siempre que defiendes un territorio.', icon: '🦉', color: '#8e7cc3' },
+  estratega: { name: 'El Estratega', desc: 'Al Espiar, además de ver el ejército rival, ganas 1 legión extra de reserva.', icon: '♟️', color: '#4cb8a0' },
+  diplomatico: { name: 'El Diplomático', desc: 'Cuando ganas un Desafío de votación, tu recompensa de Gloria se duplica.', icon: '🕊️', color: '#e1a940' },
+  explorador: { name: 'El Explorador', desc: 'En la 1ª ronda de cada Era (conquistas de territorio neutral), +1 dado atacante.', icon: '🧭', color: '#5aa9e6' },
+  guerrero: { name: 'El Guerrero', desc: 'Siempre pierdes 1 legión menos en combate (mínimo 0).', icon: '⚔️', color: '#e15757' },
+  comerciante: { name: 'El Comerciante', desc: 'Al Reforzar un territorio, añades 1 legión extra gratis.', icon: '⚖️', color: '#c98a3e' },
 };
+
+const BOT_NAMES = ['Pericles', 'Boudica', 'Atila', 'Nefertiti', 'Zenobia', 'Amanirenas', 'Wu Zetian', 'Saladino'];
 
 // Mazos de personajes por Era. Los marcados con "coded" tienen efecto mecánico real.
 const CHARACTER_DECKS = {
   1: [
-    { id: 'cesar', name: 'Julio César', region: 'Roma', flavor: 'Al reclutarlo, robas 1 legión de un territorio rival (si existe).', coded: 'steal_army' },
-    { id: 'diogenes', name: 'Diógenes de Sinope', region: 'Grecia', flavor: 'Una vez por partida, ignoras la primera derrota en combate sin perder legiones.', coded: 'shield_once' },
-    { id: 'cleopatra', name: 'Cleopatra VII', region: 'Egipto', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-    { id: 'hipatia', name: 'Hipatia de Alejandría', region: 'Egipto', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'cesar', name: 'Julio César', region: 'Roma', icon: '🏛️', flavor: 'Al reclutarlo, robas 1 legión de un territorio rival (si existe).', coded: 'steal_army' },
+    { id: 'diogenes', name: 'Diógenes de Sinope', region: 'Grecia', icon: '🏺', flavor: 'Una vez por partida, ignoras la primera derrota en combate sin perder legiones.', coded: 'shield_once' },
+    { id: 'cleopatra', name: 'Cleopatra VII', region: 'Egipto', icon: '👑', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'hipatia', name: 'Hipatia de Alejandría', region: 'Egipto', icon: '📜', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
   2: [
-    { id: 'gengis', name: 'Genghis Khan', region: 'Estepas', flavor: 'Al reclutarlo, cada rival pierde 1 legión de su territorio más débil.', coded: 'weaken_rivals' },
-    { id: 'avicena', name: 'Avicena (Ibn Sina)', region: 'Persia', flavor: '+1 dado permanente al defender (se acumula con El Filósofo).', coded: 'extra_defense_die' },
-    { id: 'marcopolo', name: 'Marco Polo', region: 'Venecia / Asia', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-    { id: 'confucio', name: 'Confucio', region: 'China', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'gengis', name: 'Genghis Khan', region: 'Estepas', icon: '🏹', flavor: 'Al reclutarlo, cada rival pierde 1 legión de su territorio más débil.', coded: 'weaken_rivals' },
+    { id: 'avicena', name: 'Avicena (Ibn Sina)', region: 'Persia', icon: '⚗️', flavor: '+1 dado permanente al defender (se acumula con El Filósofo).', coded: 'extra_defense_die' },
+    { id: 'marcopolo', name: 'Marco Polo', region: 'Venecia / Asia', icon: '🐫', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'confucio', name: 'Confucio', region: 'China', icon: '🎋', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
   3: [
-    { id: 'maquiavelo', name: 'Nicolás Maquiavelo', region: 'Italia', flavor: 'Tus órdenes nunca pueden ser reveladas por un Espía rival.', coded: 'order_hidden' },
-    { id: 'isabel', name: 'Isabel I de Castilla', region: 'España', flavor: 'Al final de la partida, tus territorios de la Era III valen doble Gloria.', coded: 'double_era3_score' },
-    { id: 'voltaire', name: 'Voltaire', region: 'Francia', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
-    { id: 'moctezuma', name: 'Moctezuma II', region: 'Imperio Azteca', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'maquiavelo', name: 'Nicolás Maquiavelo', region: 'Italia', icon: '🎭', flavor: 'Tus órdenes nunca pueden ser reveladas por un Espía rival.', coded: 'order_hidden' },
+    { id: 'isabel', name: 'Isabel I de Castilla', region: 'España', icon: '⛵', flavor: 'Al final de la partida, tus territorios de la Era III valen doble Gloria.', coded: 'double_era3_score' },
+    { id: 'voltaire', name: 'Voltaire', region: 'Francia', icon: '🖋️', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
+    { id: 'moctezuma', name: 'Moctezuma II', region: 'Imperio Azteca', icon: '🪶', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
 };
 
@@ -101,4 +106,4 @@ const DESAFIOS = [
   },
 ];
 
-module.exports = { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, TRIVIA, DESAFIOS };
+module.exports = { TERRITORIES, ERA_INFO, ARCHETYPES, CHARACTER_DECKS, TRIVIA, DESAFIOS, BOT_NAMES };
