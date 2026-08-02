@@ -75,11 +75,11 @@ async function run() {
   }
   await wait(300);
 
-  console.log('--- Elegir arquetipos ---');
-  const archs = ['filosofo', 'estratega', 'diplomatico'];
+  console.log('--- Elegir líderes ---');
+  const leaders = ['alejandro', 'juana', 'pericles'];
   for (let i = 0; i < 3; i++) {
-    const r = await apiPost('choose_archetype', { playerId: players[i].id, archetype: archs[i] });
-    if (r.error) console.log('ERROR choose_archetype', r);
+    const r = await apiPost('choose_leader', { playerId: players[i].id, leader: leaders[i] });
+    if (r.error) console.log('ERROR choose_leader', r);
   }
   await wait(300);
 
@@ -95,9 +95,13 @@ async function run() {
   console.log('Abiertos en Era I al empezar:', openAtStart, '(esperado 8)');
   if (openAtStart !== 8) throw new Error('FALLO: se esperaban 8 territorios abiertos en Era I, hay ' + openAtStart);
   const everyoneHasResourcesAndLevels = players[0].state.players.every((p) =>
-    typeof p.resources === 'number' && p.troopLevels && p.troopLevels[1] === 1 && p.troopLevels[2] === 1 && p.troopLevels[3] === 1);
-  if (!everyoneHasResourcesAndLevels) throw new Error('FALLO: algún jugador no tiene Recursos/niveles de tropa iniciales correctos');
-  console.log('OK: Recursos y niveles de tropa iniciales presentes para los 3 jugadores.');
+    typeof p.resources === 'number' && p.troopLevels && p.troopLevels.inf === 1 && p.troopLevels.cab === 1 && p.troopLevels.arq === 1);
+  if (!everyoneHasResourcesAndLevels) throw new Error('FALLO: algún jugador no tiene Recursos/niveles de clase iniciales correctos');
+  const allClassed = Object.values(players[0].state.territories).every((t) => ['inf', 'cab', 'arq'].includes(t.unitClass));
+  if (!allClassed) throw new Error('FALLO: hay territorios sin clase de guarnición válida');
+  const allPathed = Object.values(players[0].state.territories).every((t) => typeof t.path === 'string' && t.path.startsWith('M'));
+  if (!allPathed) throw new Error('FALLO: hay territorios sin polígono (t.path) para el mapa político');
+  console.log('OK: Recursos, niveles por clase, clases de guarnición y polígonos presentes.');
 
   let iterations = 0;
   let lastPhaseKey = '';
@@ -128,11 +132,15 @@ async function run() {
         const roll = Math.random();
         if (roll < 0.4 && bootstrapTargets.length) {
           const target = bootstrapTargets[Math.floor(Math.random() * bootstrapTargets.length)];
-          order = { type: 'atacar', to: target.id, amount: 1 + Math.floor(Math.random() * 2) };
+          const classes = ['inf', 'cab', 'arq'];
+          order = { type: 'atacar', mode: 'asalto', to: target.id, amount: 1 + Math.floor(Math.random() * 2), unitClass: classes[Math.floor(Math.random() * 3)] };
         } else if (roll < 0.6 && regularOptions.length) {
           const pick = regularOptions[Math.floor(Math.random() * regularOptions.length)];
           const amount = Math.max(1, Math.min(pick.src.armies - 1, 1 + Math.floor(Math.random() * 2)));
-          order = { type: 'atacar', to: pick.target.id, from: pick.src.id, amount };
+          // Reparte entre los 3 modos de ataque para cubrirlos todos a lo largo de la partida.
+          const mr = Math.random();
+          const mode = mr < 0.5 ? 'asalto' : mr < 0.8 ? 'asedio' : 'incursion';
+          order = { type: 'atacar', mode, to: pick.target.id, from: pick.src.id, amount };
         } else if (roll < 0.8 && mine.length) {
           order = { type: 'reforzar', territoryId: mine[Math.floor(Math.random() * mine.length)].id, amount: 1 };
         } else if (roll < 0.9) {
@@ -143,10 +151,16 @@ async function run() {
         }
         const r = await apiPost('submit_order', { playerId: p.id, order });
         if (r.error) console.log('ERROR submit_order', p.name, order, r);
-        // De vez en cuando, también intenta mejorar una tropa si le sobran Recursos — no pasa
-        // nada si falla por falta de fondos, solo añade cobertura orgánica de level_up_troop
-        // dentro de una partida completa (el camino feliz ya se comprueba a fondo aparte).
-        if (Math.random() < 0.3) await apiPost('level_up_troop', { playerId: p.id, era: p.state.era });
+        // De vez en cuando, también intenta mejorar una clase o construir una Maravilla si le
+        // sobran Recursos — no pasa nada si falla por falta de fondos, solo añade cobertura
+        // orgánica dentro de una partida completa (los caminos felices se comprueban aparte).
+        if (Math.random() < 0.3) {
+          const classes = ['inf', 'cab', 'arq'];
+          await apiPost('level_up_troop', { playerId: p.id, cls: classes[Math.floor(Math.random() * 3)] });
+        }
+        if (Math.random() < 0.2 && mine.length) {
+          await apiPost('construir_maravilla', { playerId: p.id, territoryId: mine[0].id });
+        }
       }
     } else if (phase === 'resolve' || phase === 'simposio') {
       console.log(`[${phase}] Era ${players[0].state.era} Ronda ${players[0].state.round}`, players[0].state.resolveLog || players[0].state.simposioResult);
@@ -185,8 +199,13 @@ async function run() {
   if (finalTerritoryCount !== 24) { console.error('FALLO: el nº de territorios cambió durante la partida (' + finalTerritoryCount + ')'); process.exit(1); }
   const badResources = players[0].state.players.some(p => typeof p.resources !== 'number' || p.resources < 0);
   if (badResources) { console.error('FALLO: algún jugador terminó con Recursos inválidos'); process.exit(1); }
-  console.log('Niveles de tropa finales:', players[0].state.players.map(p => ({ name: p.name, troopLevels: p.troopLevels })));
-  console.log('OK: 24 territorios y Recursos válidos se mantienen hasta el final.');
+  const badArmies = Object.values(players[0].state.territories).some(t => t.open && (typeof t.armies !== 'number' || t.armies < 0));
+  if (badArmies) { console.error('FALLO: algún territorio terminó con tropas negativas'); process.exit(1); }
+  const v = players[0].state.victory;
+  console.log('Victoria:', JSON.stringify(v));
+  if (!v || !['gloria', 'dominacion', 'cultura'].includes(v.type)) { console.error('FALLO: la partida terminó sin motivo de victoria válido'); process.exit(1); }
+  console.log('Niveles de clase finales:', players[0].state.players.map(p => ({ name: p.name, troopLevels: p.troopLevels })));
+  console.log('OK: 24 territorios, Recursos y tropas válidos hasta el final, y victoria con motivo (' + v.type + ').');
   console.log('TEST OK: la partida completa se resolvió sin errores.');
   process.exit(0);
 }

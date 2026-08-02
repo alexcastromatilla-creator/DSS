@@ -36,18 +36,17 @@ const BASE = 'http://127.0.0.1:3000';
   console.log('Jugadores en lobby:', chipsText);
   if (!chipsText.some(t => t.includes('🤖'))) throw new Error('No se ven bots marcados con 🤖 en el lobby');
 
-  console.log('--- Comprobando arquetipos dinámicos (deberían ser 6, no 3) ---');
-  const archCount = await page.$$eval('.arch-card', els => els.length);
-  console.log('Nº de arch-card renderizadas:', archCount);
-  if (archCount !== 6) throw new Error(`Se esperaban 6 arquetipos, se encontraron ${archCount}`);
+  console.log('--- Comprobando la pantalla de líderes históricos (deberían ser 8) ---');
+  const leaderCount = await page.$$eval('.leader-card', els => els.length);
+  console.log('Nº de leader-card renderizadas:', leaderCount);
+  if (leaderCount !== 8) throw new Error(`Se esperaban 8 líderes, se encontraron ${leaderCount}`);
+  const takenCount = await page.$$eval('.leader-card[disabled]', els => els.length);
+  console.log('Líderes ya cogidos por los bots (deshabilitados):', takenCount, '(esperado 2)');
+  if (takenCount !== 2) throw new Error(`Los 2 bots deberían tener líder cogido, hay ${takenCount} deshabilitados`);
 
-  // Elegimos un arquetipo libre (los bots ya han elegido el suyo automáticamente).
-  await page.waitForFunction(() => {
-    const btns = [...document.querySelectorAll('.arch-card')];
-    return btns.some(b => !b.disabled);
-  }, { timeout: 5000 });
-  const freeArchHandle = await page.$$('.arch-card:not([disabled])');
-  await freeArchHandle[0].click();
+  // Elegimos un líder libre (los bots ya tienen el suyo desde que se crean).
+  const freeLeaderHandle = await page.$$('.leader-card:not([disabled])');
+  await freeLeaderHandle[0].click();
   await page.waitForTimeout(300);
 
   console.log('--- Empezando partida (host, 1 humano + 2 bots) ---');
@@ -82,15 +81,24 @@ const BASE = 'http://127.0.0.1:3000';
   if (!hasBoard) throw new Error('El tablero no se muestra en la pantalla de órdenes');
   console.log('Tablero visible junto al formulario de órdenes.');
 
-  console.log('--- Comprobando el panel de tropas y mejoras ---');
+  console.log('--- Comprobando el panel de tropas (3 clases con ventajas), victorias y Maravillas ---');
   const troopPanelVisible = await page.$$eval('#screen h2', els => els.some(h => h.textContent.includes('tropas y mejoras')));
   if (!troopPanelVisible) throw new Error('FALLO: no se ve el panel de tropas y mejoras');
+  const tierCount = await page.$$eval('.troop-tier', els => els.length);
+  console.log('Clases de tropa mostradas:', tierCount, '(esperado 3)');
+  if (tierCount !== 3) throw new Error('FALLO: deberían verse las 3 clases (Infantería/Caballería/A distancia)');
   const levelRowCount = await page.$$eval('.level-row', els => els.length);
-  console.log('Filas de nivel de tropa mostradas (esperado 3, una por nivel):', levelRowCount);
-  if (levelRowCount !== 3) throw new Error('FALLO: deberían verse las 3 filas de nivel (1,2,3) de la tropa de Era I');
+  console.log('Filas de nivel mostradas (esperado 9 = 3 clases × 3 niveles):', levelRowCount);
+  if (levelRowCount !== 9) throw new Error('FALLO: deberían verse 9 filas de nivel en total');
+  const victoryPanel = await page.$$eval('#screen h2', els => els.some(h => h.textContent.includes('Vías de victoria')));
+  if (!victoryPanel) throw new Error('FALLO: no se ve el panel de vías de victoria');
+  const victoryRows = await page.$$eval('.victory-row', els => els.length);
+  if (victoryRows !== 3) throw new Error('FALLO: el panel de victorias debería tener 1 fila por jugador (3), hay ' + victoryRows);
+  const wonderPanel = await page.$$eval('#screen h2', els => els.some(h => h.textContent.includes('Maravillas')));
+  if (!wonderPanel) throw new Error('FALLO: no se ve el panel de Maravillas');
   const roomBarResources = await page.$eval('#roomBar', el => el.textContent);
   if (!roomBarResources.includes('💰')) throw new Error('FALLO: la barra de sala no muestra los Recursos');
-  console.log('OK: panel de tropas y mejoras y Recursos visibles.');
+  console.log('OK: 3 clases con 9 niveles, vías de victoria, Maravillas y Recursos visibles.');
 
   console.log('--- Comprobando que el tablero muestra unidades visuales por territorio (no solo un número) ---');
   const eraLabel = await page.$('.era-label');
@@ -100,39 +108,39 @@ const BASE = 'http://127.0.0.1:3000';
   if (!unitIconsCount) throw new Error('El tablero no muestra iconos de unidades (soldados) por territorio');
   const badgeText = await page.$eval('.unit-icons', el => el.textContent);
   console.log('Ejemplo de insignia de unidades:', badgeText);
+  const classInCards = await page.$$eval('.territory', els => els.filter(e => /Hoplitas|Hetairoi|Arqueros/.test(e.textContent)).length);
+  console.log('Fichas que muestran el nombre histórico de su clase de guarnición:', classInCards, '/ 8');
+  if (classInCards !== 8) throw new Error('FALLO: las fichas de territorio deberían indicar su clase de guarnición de Era I');
 
-  console.log('--- Comprobando el mapa del país completo (24 territorios, niebla, sin círculos) ---');
+  console.log('--- Comprobando el mapa político (24 provincias con polígonos suaves, niebla, sin cuadrícula) ---');
   const circleCount = await page.$$eval('svg.map-svg circle', els => els.length);
-  console.log('Círculos en el mapa (debe ser 0; el monumento de fondo puede tener los suyos aparte):', circleCount);
+  console.log('Círculos en el mapa (debe ser 0):', circleCount);
   if (circleCount) throw new Error('El mapa todavía dibuja círculos, y ya no deberían estar');
+  const rectCount = await page.$$eval('svg.map-svg rect', els => els.length);
+  console.log('Rectángulos en el mapa (debe ser 1, solo el mar de fondo):', rectCount);
+  if (rectCount !== 1) throw new Error('El mapa sigue cuadriculado: hay ' + rectCount + ' rects y solo debería estar el mar de fondo');
   const territoryCardIds = await page.$$eval('.territory', els => els.map(e => e.id.replace('terr-', '')));
-  const zoneIdList = await page.$$eval('.zone-cell', els => [...new Set(els.map(e => e.dataset.terr))]);
-  console.log('Fragmentos de terreno distintos en el mapa:', zoneIdList.length, '(esperado 24, el país entero) | Territorios con ficha (abiertos en Era I):', territoryCardIds.length, '(esperado 8)');
-  if (zoneIdList.length !== 24) throw new Error('FALLO: el mapa debería pintar los 24 territorios de la partida (abiertos + en niebla), pinta ' + zoneIdList.length);
+  const shapeIdList = await page.$$eval('.terr-shape', els => [...new Set(els.map(e => e.dataset.terr))]);
+  console.log('Provincias con polígono en el mapa:', shapeIdList.length, '(esperado 24, el país entero) | Territorios con ficha (abiertos en Era I):', territoryCardIds.length, '(esperado 8)');
+  if (shapeIdList.length !== 24) throw new Error('FALLO: el mapa debería pintar las 24 provincias (abiertas + en niebla), pinta ' + shapeIdList.length);
   if (territoryCardIds.length !== 8) throw new Error('FALLO: se esperaban 8 territorios con ficha detallada (Era I), hay ' + territoryCardIds.length);
-  if (!territoryCardIds.every((id) => zoneIdList.includes(id))) throw new Error('FALLO: algún territorio abierto (con ficha) no aparece pintado en el mapa');
-  const zoneRectCount = await page.$$eval('svg rect.zone-cell', els => els.length);
-  console.log('Celdas de terreno pintadas:', zoneRectCount);
-  if (zoneRectCount < 100) throw new Error('El mapa no pinta el terreno de fondo (zonas de color por territorio)');
-  const borderCount = await page.$$eval('svg line.zone-border', els => els.length);
-  console.log('Líneas de frontera entre fragmentos:', borderCount);
-  if (!borderCount) throw new Error('El mapa no traza ninguna frontera entre fragmentos de territorio distintos');
+  if (!territoryCardIds.every((id) => shapeIdList.includes(id))) throw new Error('FALLO: algún territorio abierto (con ficha) no aparece pintado en el mapa');
+  const pathCount = await page.$$eval('svg.map-svg path', els => els.length);
+  console.log('Paths SVG en el mapa (sotabase + rellenos + fronteras destacadas):', pathCount);
+  if (pathCount < 48) throw new Error('El mapa no pinta los polígonos esperados (al menos sotabase + relleno por provincia)');
   const legend = await page.$('.map-legend');
   if (!legend) throw new Error('Falta la leyenda del mapa');
   const lockedCount = await page.$$eval('svg.map-svg text', els => els.filter(e => e.textContent.includes('🔒')).length);
-  console.log('Territorios en niebla (con candado) dibujados en el mapa:', lockedCount, '(esperado 16 = 24 - 8 abiertos)');
-  if (lockedCount !== 16) throw new Error('FALLO: se esperaban 16 territorios en niebla en Era I, hay ' + lockedCount);
+  console.log('Provincias en niebla (con candado):', lockedCount, '(esperado 16 = 24 - 8 abiertas)');
+  if (lockedCount !== 16) throw new Error('FALLO: se esperaban 16 provincias en niebla en Era I, hay ' + lockedCount);
 
-  console.log('--- Tocando un fragmento del mapa: debe resaltar su ficha en la lista ---');
-  // OJO: el primer .zone-cell en el DOM puede caer en un territorio todavía en niebla (no tiene
-  // ficha que resaltar, solo un aviso al tocarlo) — para probar el resaltado hace falta tocar
-  // específicamente una celda de un territorio ABIERTO (con ficha), no cualquier celda del mapa.
-  const firstZone = await page.$(`.zone-cell[data-terr="${territoryCardIds[0]}"]`);
-  if (!firstZone) throw new Error('No se encontró ninguna celda del mapa para el primer territorio abierto');
-  await firstZone.click();
+  console.log('--- Tocando una provincia del mapa: debe resaltar su ficha en la lista ---');
+  // OJO: hay que tocar una provincia ABIERTA (las de niebla solo muestran un aviso), y hacerlo
+  // vía dispatchEvent porque el polígono puede quedar parcialmente tapado por las etiquetas.
+  await page.$eval(`.terr-shape[data-terr="${territoryCardIds[0]}"]`, el => el.dispatchEvent(new MouseEvent('click', { bubbles: true })));
   const flashed = await page.waitForSelector('.territory.flash', { timeout: 1500 }).catch(() => null);
-  if (!flashed) throw new Error('Tocar un fragmento del mapa no resalta su territorio correspondiente en la lista');
-  console.log('OK: tocar un fragmento del mapa resalta su ficha en la lista de abajo.');
+  if (!flashed) throw new Error('Tocar una provincia del mapa no resalta su territorio correspondiente en la lista');
+  console.log('OK: tocar una provincia del mapa resalta su ficha en la lista de abajo.');
 
   console.log('--- Comprobando que el temporizador NO resetea el formulario cada segundo (bug reportado) ---');
   await page.selectOption('#orderType', 'atacar');

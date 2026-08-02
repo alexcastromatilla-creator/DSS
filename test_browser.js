@@ -40,15 +40,15 @@ const BASE = 'http://127.0.0.1:3000';
   await p1.waitForFunction(() => document.querySelectorAll('.player-chip').length === 3, { timeout: 8000 });
   console.log('Los 3 jugadores aparecen en el lobby.');
 
-  const archetypes = ['filosofo', 'estratega', 'diplomatico'];
+  const leaders = ['alejandro', 'juana', 'pericles'];
   for (let i = 0; i < 3; i++) {
-    await pages[i].click(`[data-arch="${archetypes[i]}"]`);
+    await pages[i].click(`[data-leader="${leaders[i]}"]`);
   }
   await p1.waitForFunction(() => {
     const chips = [...document.querySelectorAll('.player-chip')];
     return chips.every((c) => !c.textContent.includes('eligiendo'));
   }, { timeout: 8000 });
-  console.log('Los 3 arquetipos elegidos correctamente.');
+  console.log('Los 3 líderes elegidos correctamente.');
 
   await p1.click('#startBtn');
 

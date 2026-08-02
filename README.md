@@ -1,10 +1,10 @@
 # El Banquete
 
-Juego de conquista, historia y brindis para 2 a 6 jugadores, cada uno desde su móvil.
+Juego de conquista, historia y brindis para 2 a 6 jugadores, cada uno desde su móvil — al estilo de un Civilization de sobremesa, con Risk en el corazón del combate.
 
-Tablero de 24 territorios repartidos en 3 Eras (Grecia/Roma → Rutas de Oriente → Renacimiento y Nuevo Mundo, 8 territorios por Era) — **el mapa se genera al azar en cada partida** (hay 12 regiones posibles por Era, se eligen 8 y se conectan de forma distinta cada vez) con la forma orgánica de un país inventado, no un continente entero ni territorios sueltos. Combate por dados al estilo Risk (atacas desde un territorio tuyo concreto, con las tropas que tengas ahí estacionadas), tropas con 3 niveles mejorables gastando Recursos, cartas de Personaje y los Desafíos de estrategia+bebida. También puedes jugar contra bots para probarlo sin esperar a tener gente disponible.
+Cada jugador encarna a un **Líder histórico** (Alejandro Magno, Juana de Arco, Aníbal, Pericles, Zheng He, Mansa Musa, Simón Bolívar o Sun Tzu), cada uno con un bonus permanente propio. El tablero es un **mapa político generado al azar en cada partida**: un país de 24 provincias con fronteras orgánicas y mar alrededor, repartido en 3 Eras (Grecia/Roma → Rutas de Oriente → Renacimiento y Nuevo Mundo, 8 provincias por Era, elegidas de un pool de 12 por Era). Las provincias de Eras futuras se ven desde el primer turno como zonas en niebla 🔒 que se revelan al llegar su Era.
 
-El tablero se ve como el mapa de un país de verdad, sin círculos ni marcadores sueltos: cada territorio es un fragmento de terreno con su propio color desde el primer turno — en cuanto alguien lo conquista, se repinta con el color de ese jugador — y hay una frontera marcada entre fragmentos, como en un mapa de conquista. El borde de tus territorios se ve dorado, y el de los que hacen frontera contigo (= los que puedes atacar ahora mismo) rojo. Se ve el país entero desde el primer turno: los territorios de Eras que todavía no han empezado aparecen como zonas en niebla (🔒), que se revelan con su terreno real al llegar su Era. Toca cualquier fragmento abierto para ver su ficha completa en la lista de abajo.
+Hay **3 clases de tropa** con ventajas entre sí (Infantería vence a Caballería, Caballería vence a las tropas A distancia, y éstas vencen a Infantería), **3 modos de ataque** (Asalto, Asedio e Incursión), **Recursos** que generan tus territorios, **niveles de tropa mejorables**, **Maravillas** construibles y **3 formas distintas de ganar**. Y, siendo El Banquete, los Desafíos de estrategia+bebida siguen en el centro de la fiesta. También puedes jugar contra bots para probarlo sin esperar a tener gente disponible.
 
 ## Requisitos
 
@@ -18,74 +18,79 @@ node server.js
 
 Verás `El Banquete escuchando en :3000`. Abre `http://localhost:3000` en un navegador para comprobar que funciona.
 
-## Cómo jugar los 3 desde el móvil
+## Cómo jugar desde el móvil
 
 ### Opción A — mismo wifi (la más rápida para probarlo)
 
 1. En el ordenador donde corre el servidor, mira tu IP local: en Mac/Linux `ifconfig | grep inet`, en Windows `ipconfig`. Busca algo como `192.168.1.23`.
-2. Con los 3 móviles conectados a la misma red wifi, abrid `http://192.168.1.23:3000` (con tu IP) en cada uno.
-3. Uno crea la sala, os pasa el código de 4 letras, los otros dos se unen.
+2. Con los móviles conectados a la misma red wifi, abrid `http://192.168.1.23:3000` (con tu IP) en cada uno.
+3. Uno crea la sala, os pasa el código de 4 letras, los demás se unen.
 
 ### Opción B — un enlace permanente, jugable desde cualquier sitio
 
 Sigue **`DEPLOY_RENDER.md`** (incluido en esta carpeta) — son dos webs y un rato de clics, sin terminal ni saber programar, y al final tenéis una URL fija tipo `https://el-banquete.onrender.com` que podéis guardar y reutilizar siempre.
 
-**Importante sobre el plan gratuito de Render:** si nadie usa la sala durante un rato largo (típicamente 15 minutos), Render "duerme" el servicio para ahorrar recursos. La próxima vez que alguien entre tarda unos segundos extra en despertar, y — como las salas viven en memoria, no en una base de datos — **cualquier sala que hubiera creada antes de dormirse desaparece**. Si un código de sala deja de funcionar de un día para otro, esa es la causa más probable: hay que crear la sala de nuevo. No afecta a partidas que estéis jugando activamente, solo a salas abandonadas.
+**Importante sobre el plan gratuito de Render:** si nadie usa la sala durante un rato largo (típicamente 15 minutos), Render "duerme" el servicio para ahorrar recursos. La próxima vez que alguien entre tarda unos segundos extra en despertar, y — como las salas viven en memoria, no en una base de datos — **cualquier sala creada antes de dormirse desaparece**. Si un código de sala deja de funcionar de un día para otro, esa es la causa más probable: hay que crear la sala de nuevo. No afecta a partidas que estéis jugando activamente, solo a salas abandonadas.
 
 ## Reiniciar una partida o salir de la sala
 
-Arriba de la pantalla, mientras estás en una sala, hay una barra con el código y dos botones: **🔄 Reiniciar** (solo lo ve el anfitrión — vuelve al lobby con un mapa nuevo, resetea Gloria y progreso, pero mantiene a los mismos jugadores y sus Arquetipos, sin tener que compartir un código nuevo) y **🚪 Salir** (te devuelve a la pantalla inicial si te has quedado atascado o quieres crear/unirte a otra sala). Al terminar una partida también aparece un botón para que el anfitrión empiece otra ronda con el mismo grupo.
+Arriba de la pantalla, mientras estás en una sala, hay una barra con el código, tus Recursos 💰 y dos botones: **🔄 Reiniciar** (solo lo ve el anfitrión — vuelve al lobby con un mapa nuevo, resetea Gloria, Recursos, niveles y Maravillas, pero mantiene a los mismos jugadores y sus Líderes) y **🚪 Salir**. Al terminar una partida también aparece un botón para que el anfitrión empiece otra con el mismo grupo.
 
 ## Jugar solo/a contra bots (para probar el juego)
 
-Ya no hace falta esperar a tener 2 amigos disponibles para probarlo. En la pantalla inicial, al crear sala, eliges cuántos jugadores en total (2 a 6) y cuántos de ellos son bots (por defecto 0, para no dejar sin sitio a tus amigos por despiste). Si quieres testear una partida completa tú solo/a, sube el número de bots a "total - 1". Los bots eligen arquetipo, envían órdenes y participan en los Desafíos de forma automática (con un pequeño retraso, para que se sienta natural).
+En la pantalla inicial, al crear sala, eliges cuántos jugadores en total (2 a 6) y cuántos de ellos son bots (por defecto 0). Los bots eligen Líder, envían órdenes con los tres modos de ataque, eligen la clase con ventaja al colonizar, mejoran sus tropas, construyen Maravillas si van sobrados y participan en los Desafíos, todo de forma automática.
 
 ## Cómo se juega
 
-1. **Lobby:** el anfitrión crea la sala (eligiendo nº de jugadores y de bots) y comparte el código con los jugadores humanos que falten — los bots ya están dentro. Cada uno elige su Arquetipo: hay 6 disponibles (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante), cada uno con un icono y un bonus distinto.
-2. **Cada Era** (3 en total) abre 8 territorios nuevos, elegidos al azar de un pool de 12 posibles por Era, y dura 3 rondas. Las tropas también cambian por Época: legiones en la Era I, jinetes en la Era II, regimientos en la Era III — cada tipo tiene 3 niveles mejorables (ver más abajo) y los territorios más tardíos empiezan con más guarnición.
-3. **Cada ronda, sin prisa (ya no hay contador):** en secreto desde tu móvil, eliges una orden: **Atacar** (eligiendo territorio de origen —uno tuyo, con tropas de sobra— y el territorio vecino que quieres conquistar, como en el Risk), **Reforzar** uno tuyo, **Reclutar** un Personaje, o **Espiar** a un rival. Se resuelve todo a la vez y el resultado (incluidos los sorbos) se muestra en pantalla junto al tablero actualizado. Mejorar tus tropas (ver abajo) no consume esta orden — es una decisión aparte, se puede hacer en cualquier momento.
-4. **Tras la 2ª ronda de cada Era:** un Desafío de grupo (dilema, riesgo o debate) — el componente más "de beber" del juego.
-5. **Al final de cada Era:** un Simposio reparte Gloria según los territorios que controla cada uno.
-6. Gana quien más Gloria tenga al final de la Era III.
+1. **Lobby:** el anfitrión crea la sala y comparte el código. Cada jugador elige su **Líder histórico** — 8 disponibles, cada uno con retrato, título y un bonus permanente distinto (defensa, conquista, economía, mejoras más baratas...). Una tarjeta "Cómo funciona" resume las reglas ahí mismo.
+2. **Cada Era** (3 en total) abre 8 provincias nuevas y dura 3 rondas. Cada provincia tiene una **clase de guarnición** visible en el mapa (p. ej. Hoplitas 🛡️, Hetairoi 🐎 o Arqueros cretenses 🏹 en la Era I — los nombres cambian por Época, el rol táctico no).
+3. **Cada ronda, en secreto desde tu móvil**, eliges una orden:
+   - **⚔️ Atacar / Colonizar** con 3 modos: **Asalto** (combate a dados estilo Risk: si aniquilas la guarnición, conquistas la provincia y tus supervivientes se mudan), **Asedio** (duelo a 1 dado: si ganas, el defensor pierde 1 tropa — desgaste sin arriesgar conquista) o **Incursión** (duelo a 1 dado contra provincia de un rival: si ganas, le robas hasta 3 Recursos 💰). En la 1ª ronda de cada Era, las provincias nuevas están libres y se **colonizan** desde tu reserva eligiendo tú la clase de tropa con la que desembarcas.
+   - **🛡️ Reforzar** una provincia tuya con tu reserva.
+   - **👑 Reclutar** un Personaje histórico (cartas con efectos, ver abajo).
+   - **🕵️ Espiar** el ejército de un rival.
+4. **La ventaja de clase** funciona en todos los modos: si tu clase vence a la del defensor (Infantería > Caballería > A distancia > Infantería), juegas con +1 dado; si es al revés, el defensor lo recibe él. El mapa te enseña la clase de cada provincia justamente para que puedas planear con qué atacar.
+5. **Tras la 2ª ronda de cada Era:** un Desafío de grupo (dilema, riesgo o debate) — el componente más "de beber" del juego.
+6. **Al final de cada Era:** un Simposio reparte Gloria según las provincias que controla cada uno.
 
 Las cantidades de sorbos que muestra la app son orientativas — ajustadlas a vuestro gusto, la app no os obliga a nada, solo lleva la cuenta del juego.
 
-## Recursos y mejora de tropas
+## Recursos, mejoras de tropa y Maravillas
 
-Cada territorio que controlas te da **1 Recurso** al final de cada ronda — cuanto más mapa controlas, más rápido acumulas. Los Recursos sirven para mejorar tus tropas: cada tipo de tropa (legiones, jinetes, regimientos) tiene 3 niveles, explicados en detalle dentro de la propia app:
+Cada provincia que controlas te da **1 Recurso 💰** al final de cada ronda (Mansa Musa gana 1 extra). Los Recursos se gastan en dos cosas, y ninguna consume tu orden de la ronda:
 
-1. **Nivel 1** (inicial, gratis): dados de combate normales (hasta 3 al atacar, hasta 2 al defender).
-2. **Nivel 2** ("veterana/o", cuesta 8 Recursos): +1 dado extra tanto al atacar como al defender.
-3. **Nivel 3** ("de élite", cuesta 16 Recursos): igual que nivel 2, y además gana los empates en combate (normalmente los gana quien defiende).
+- **⬆️ Mejorar una clase de tropa** (para siempre, todas tus tropas de esa clase en todas las Épocas): Nivel 1 Recluta (gratis) → Nivel 2 Veterana (+1 dado, 8 💰) → Nivel 3 De élite (+1 dado y gana los empates, que normalmente favorecen al defensor, 16 💰). Sun Tzu paga 2 💰 menos. El panel "⚔️ Tus tropas y mejoras" explica cada clase y cada nivel durante toda la partida.
+- **🏛️ Construir una Maravilla** (15 💰, en una provincia tuya, máximo una por provincia): El Partenón, la Gran Muralla, Machu Picchu... La Maravilla queda ligada a la provincia — **si te la conquistan, la Maravilla cambia de dueño**.
 
-Mejorar es "tecnología compartida": en cuanto subes de nivel un tipo de tropa, sube **para siempre y para todas** tus tropas de esa Época — las que ya tienes estacionadas y las que consigas después —, no solo el ejército que combatió. No consume tu orden de la ronda: puedes mejorar en cualquier momento que te alcancen los Recursos, siempre que esa Era ya haya empezado. Dentro de la partida, la tarjeta "⚔️ Tus tropas y mejoras" muestra en todo momento cuántos Recursos tienes, en qué nivel está cada tropa y qué hace exactamente cada nivel.
+## Las 3 formas de ganar
 
-## Qué está simplificado en esta v1 (para que fuera jugable ya)
+El panel "🏆 Vías de victoria" muestra en todo momento el progreso de cada jugador hacia las tres:
 
-Comparado con el documento de diseño completo:
+1. **🗺️ Dominación** — controla el 60% de las provincias abiertas al final de cualquier ronda (5 de 8 en la Era I, 10 de 16 en la II, 15 de 24 en la III) y ganas al instante.
+2. **🏛️ Cultura** — controla 3 Maravillas a la vez y ganas al instante (construirlas... o conquistárselas a otro).
+3. **🏆 Gloria** — si nadie ha ganado antes, al final de la Era III gana quien más Gloria haya acumulado (Simposios, Desafíos, Personajes y conquistas de Bolívar).
 
-- **Arquetipos:** hay 6 implementados (Filósofo, Estratega, Diplomático, Explorador, Guerrero, Comerciante) de los que puede haber más en el diseño completo.
-- **Regiones:** hay 12 posibles por Era en `data.js` (36 en total); cada partida usa 8 por Era elegidas y conectadas al azar (24 territorios en juego, con la disposición calculada por el servidor para que salga siempre una única masa de tierra conectada tipo país). Añadir más regiones al pool es tan fácil como añadir una línea más.
-- **Personajes:** cada Era tiene un mazo de 4 (en vez de los ~13-16 del diseño completo). 2 de cada 4 tienen efecto mecánico real en el juego (César, Diógenes, Genghis Khan, Avicena, Maquiavelo, Isabel de Castilla); los otros 2 son cartas de prestigio que dan +1 Gloria.
-- **Desafíos:** hay 3 implementados (Dilema del Prisionero, Encrucijada de Aníbal, Debate de Atenas) que rotan uno por Era, en vez del mazo completo de 8.
-- **Combate:** dados estilo Risk (hasta 3 atacantes vs 2 defensores) con los bonos de Arquetipo, Personaje y nivel de tropa ya integrados. Atacas desde un territorio tuyo concreto (dejando al menos 1 tropa de guarnición); si conquistas, las tropas supervivientes se mudan al territorio nuevo, si fracasas solo pierdes las bajas y el resto vuelve a casa.
-- **Niveles de tropa:** 3 niveles por tipo de tropa (ver "Recursos y mejora de tropas" más arriba), iguales en estructura para las 3 Épocas. Añadir un 4º nivel o variar el coste es cuestión de tocar el array `levels` de cada tropa en `data.js`.
-- **Territorios libres:** en la 1ª ronda de cada Era, los 4 territorios nuevos están sin dueño y se colonizan directamente desde tu reserva (no hace falta tener ya un vecino tuyo).
-- **Ilustraciones:** por defecto el juego usa dibujos vectoriales propios (monumento de fondo por Era) e iconos con marco animado (personajes) — no dependen de ningún servicio externo. Hay ilustraciones "pintadas" opcionales generadas con IA; instrucciones en `public/images/LEEME.md`.
+## Qué está simplificado en esta versión (para que fuera jugable ya)
 
-Nada de esto es difícil de ampliar — si tras un par de partidas veis que os falta contenido (más Personajes, más Desafíos, más regiones), es la parte más rápida de añadir porque toda la estructura ya está montada en `data.js`.
+- **Líderes:** 8 implementados, cada uno con un bonus real en el motor del juego.
+- **Regiones:** hay 12 posibles por Era en `data.js` (36 en total); cada partida usa 8 por Era, conectadas al azar, con el mapa político calculado por el servidor (disposición de fuerzas + celdas de Voronoi suavizadas — sin librerías externas). Añadir regiones es añadir una línea.
+- **Clases de tropa:** 3 clases con ventaja circular y 3 niveles cada una, iguales en estructura para las 3 Épocas (cambian nombre e icono por Era). Añadir un 4º nivel o variar costes es tocar el array `levels` en `data.js`.
+- **Personajes:** cada Era tiene un mazo de 4 (2 con efecto mecánico real, 2 de prestigio que dan +1 Gloria).
+- **Desafíos:** 3 implementados que rotan uno por Era.
+- **Combate:** dados estilo Risk (hasta 3 atacantes vs 2 defensores) con los bonos de Líder, Personaje, ventaja de clase y nivel de tropa integrados; el atacante deja siempre al menos 1 tropa de guarnición en el origen. El Asedio y la Incursión son duelos a 1 dado (más la ventaja de clase), pensados para desgastar o robar sin jugarse la conquista.
+- **Ilustraciones:** por defecto todo funciona con dibujos vectoriales e iconos con marco animado. Hay retratos "pintados" opcionales generados con IA (los 8 Líderes, los 12 Personajes y los 3 monumentos); instrucciones en `public/images/LEEME.md`.
 
 ## Verificación
 
-La lógica del juego se probó con simulaciones automáticas de partidas completas (3 humanos, y por separado 1 humano + bots) sin errores — comprobando también que el mapa siempre tiene 24 territorios (8 abiertos en Era I) y que Recursos y niveles de tropa parten bien inicializados para todos los jugadores —, un test dedicado de reiniciar partida (permisos, reseteo de progreso incluidos Recursos y niveles, mapa nuevo de 24 territorios, se puede jugar de nuevo), dos tests dedicados al sistema de mejora de tropas (rechazo sin Recursos suficientes, rechazo al mejorar una Era todavía no alcanzada, y el camino completo de una mejora real: conquista, ingreso de Recursos, subida de nivel con su coste correcto, y que la mejora de un jugador no afecte a los demás), y tests en navegador real cubriendo lobby, selección de nº de jugadores/bots, elección de Arquetipo, el panel "Tus tropas y mejoras", que la barra de sala muestra los Recursos, el mapa del país completo (24 fragmentos pintados, 16 en niebla al empezar la Era I, sin círculos), envío de órdenes de ataque con territorio de origen, que el formulario de órdenes no se borra aunque otro jugador (o un bot) envíe su orden mientras tú sigues eligiendo la tuya, y que ya no hay ningún contador visible en pantalla.
+Todo el flujo se probó con una suite automática contra el servidor real: partidas completas de 3 humanos y de 1 humano + 2 bots hasta el final con motivo de victoria válido; reinicio de partida (permisos, reseteo completo incluidos Recursos/niveles/Maravillas, mapa nuevo de 24 provincias); validaciones de mejora de clase y de Maravillas (fondos, clase inexistente, territorio ajeno); el camino feliz de la mejora de clase (colonización real eligiendo la clase con ventaja, coste exacto, aislamiento por jugador); el camino feliz de las Maravillas (acumulación real de Recursos con Mansa Musa, coste exacto, visible para todos, rechazo de duplicada y de sin-fondos); los modos de ataque (asedio real que desgasta exactamente 1 tropa de un solo bando sin cambiar dueños; rechazos de incursión sin origen y sobre territorio neutral); y dos tests de navegador real (Chromium) cubriendo lobby, 8 líderes con los de los bots bloqueados, panel de 3 clases con 9 niveles, vías de victoria, Maravillas, mapa político de 24 provincias con 16 en niebla y sin cuadrícula, toque en provincia para ver su ficha, y persistencia del formulario de órdenes — todo sin errores de consola.
 
 ## Estructura del proyecto
 
 ```
-server.js       → toda la lógica del juego y el servidor, incluida la disposición del mapa (sin dependencias externas)
-data.js         → regiones, tropas por Época con sus niveles de mejora, personajes y desafíos (aquí se amplía el contenido)
+server.js       → toda la lógica del juego y el servidor, incluido el cálculo del mapa político (sin dependencias externas)
+data.js         → regiones, líderes, clases de tropa con niveles, maravillas, personajes y desafíos (aquí se amplía el contenido)
 public/index.html → la interfaz — una sola página, funciona en cualquier móvil
 public/images/  → ilustraciones opcionales (ver LEEME.md ahí dentro)
 package.json
+test_*.js       → suite de verificación automática (no hace falta para jugar)
 ```

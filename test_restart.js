@@ -60,8 +60,8 @@ async function run() {
   await apiPost('join_room', { playerId: guest.id, name: 'Guest', code });
   await wait(200);
 
-  await apiPost('choose_archetype', { playerId: host.id, archetype: 'filosofo' });
-  await apiPost('choose_archetype', { playerId: guest.id, archetype: 'guerrero' });
+  await apiPost('choose_leader', { playerId: host.id, leader: 'juana' });
+  await apiPost('choose_leader', { playerId: guest.id, leader: 'alejandro' });
   await wait(200);
 
   // El invitado NO debería poder reiniciar.
@@ -99,14 +99,16 @@ async function run() {
 
   const hostAfterReset = host.state.players.find(p => p.id === host.id);
   if ((hostAfterReset.resources || 0) !== 0) throw new Error('FALLO: los Recursos no se resetearon (' + hostAfterReset.resources + ')');
-  const levelsReset = hostAfterReset.troopLevels && hostAfterReset.troopLevels[1] === 1 && hostAfterReset.troopLevels[2] === 1 && hostAfterReset.troopLevels[3] === 1;
-  if (!levelsReset) throw new Error('FALLO: los niveles de tropa no se resetearon a 1: ' + JSON.stringify(hostAfterReset.troopLevels));
-  console.log('OK: Recursos (0) y niveles de tropa ({1,2,3}:1) reseteados correctamente.');
+  const levelsReset = hostAfterReset.troopLevels && hostAfterReset.troopLevels.inf === 1 && hostAfterReset.troopLevels.cab === 1 && hostAfterReset.troopLevels.arq === 1;
+  if (!levelsReset) throw new Error('FALLO: los niveles de clase no se resetearon a 1: ' + JSON.stringify(hostAfterReset.troopLevels));
+  const noWonders = Object.values(host.state.territories).every(t => !t.wonder);
+  if (!noWonders) throw new Error('FALLO: el mapa nuevo trae Maravillas ya construidas');
+  console.log('OK: Recursos (0), niveles por clase (inf/cab/arq:1) y mapa sin Maravillas tras reiniciar.');
 
-  const playersAfter = host.state.players.map(p => `${p.name}(${p.archetype})`);
+  const playersAfter = host.state.players.map(p => `${p.name}(${p.leader})`);
   console.log('Jugadores conservados:', playersAfter);
   if (host.state.players.length !== 2) throw new Error('FALLO: no se conservaron los 2 jugadores');
-  if (!host.state.players.every(p => p.archetype)) throw new Error('FALLO: se perdieron los arquetipos');
+  if (!host.state.players.every(p => p.leader)) throw new Error('FALLO: se perdieron los líderes');
 
   const boardAfter = Object.keys(host.state.territories).sort().join(',');
   const territoryCountAfter = Object.keys(host.state.territories).length;

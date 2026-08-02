@@ -3,11 +3,15 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { REGION_POOLS, TERRITORIES_PER_ERA, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES } = require('./data');
+const {
+  REGION_POOLS, TERRITORIES_PER_ERA, ERA_INFO,
+  TROOP_CLASSES, TROOP_CLASS_KEYS, ERA_GARRISON,
+  LEADERS, WONDERS, WONDER_COST, WONDERS_TO_WIN, DOMINATION_RATIO,
+  CHARACTER_DECKS, DESAFIOS, BOT_NAMES,
+} = require('./data');
 
-// Tamaño del lienzo en el que se calculan las coordenadas x,y de cada territorio (ver
-// layoutTerritories). El cliente usa exactamente este mismo tamaño como viewBox del mapa SVG,
-// así las coordenadas que manda el servidor encajan sin reescalados raros.
+// Tamaño del lienzo en el que se calculan las coordenadas x,y y los polígonos de cada territorio.
+// El cliente usa exactamente este mismo tamaño como viewBox del mapa SVG.
 const MAP_W = 320;
 const MAP_H = 380;
 
@@ -17,7 +21,7 @@ const MAP_H = 380;
 const ORDERS_TIME = 180000;
 const DESAFIO_TIME = 90000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const ARCHETYPE_KEYS = Object.keys(ARCHETYPES);
+const LEADER_KEYS = Object.keys(LEADERS);
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 // Retardo con el que "piensan" los bots, para que no se sienta instantáneo ni lento.
@@ -51,8 +55,8 @@ function newId() {
 
 function makePlayer(id, name, isBot) {
   return {
-    id, name: name.slice(0, 20), archetype: null, reserve: 0, gloria: 0, characters: [], shield: false, isBot: !!isBot,
-    resources: 0, troopLevels: { 1: 1, 2: 1, 3: 1 },
+    id, name: name.slice(0, 20), leader: null, reserve: 0, gloria: 0, characters: [], shield: false, isBot: !!isBot,
+    resources: 0, troopLevels: { inf: 1, cab: 1, arq: 1 },
   };
 }
 
@@ -63,15 +67,17 @@ function botDelay() {
 function addBots(room, count) {
   const usedNames = new Set(room.players.map((p) => p.name));
   const namePool = [...BOT_NAMES].sort(() => Math.random() - 0.5);
-  const archPool = [...ARCHETYPE_KEYS].sort(() => Math.random() - 0.5);
-  let archIdx = 0;
+  const leaderPool = [...LEADER_KEYS].sort(() => Math.random() - 0.5);
+  let leaderIdx = 0;
   for (let i = 0; i < count; i++) {
     const id = 'bot_' + newId();
     let name = namePool.find((n) => !usedNames.has(n)) || `Bot ${i + 1}`;
     usedNames.add(name);
     const bot = makePlayer(id, name, true);
-    bot.archetype = archPool[archIdx % archPool.length];
-    archIdx++;
+    // Los bots eligen un líder que ningún otro jugador (humano o bot) tenga ya cogido.
+    while (leaderIdx < leaderPool.length && room.players.some((p) => p.leader === leaderPool[leaderIdx])) leaderIdx++;
+    bot.leader = leaderPool[leaderIdx % leaderPool.length];
+    leaderIdx++;
     room.players.push(bot);
     playerRoom[id] = room.code;
   }
@@ -90,8 +96,7 @@ function connectTerritories(territories, aId, bId) {
 // Tras unos cientos de iteraciones, un grafo conectado como el nuestro (árbol por Era + puentes
 // entre Eras) siempre acaba formando una única mancha orgánica y sin agujeros — ahí es donde nace
 // la forma de "país" del mapa, sin tener que dibujar ninguna costa a mano. Se calcula una sola vez
-// al generar el tablero; el resultado se guarda en cada territorio (t.x, t.y) y viaja tal cual al
-// cliente, que solo tiene que pintar, no recalcular nada.
+// al generar el tablero.
 function layoutTerritories(territories, W, H) {
   const ids = Object.keys(territories);
   const n = ids.length;
@@ -167,10 +172,58 @@ function layoutTerritories(territories, W, H) {
   });
 }
 
+// Convierte los puntos (x,y) en un MAPA POLÍTICO de verdad: para cada territorio calcula el
+// polígono de su "provincia" — su celda de Voronoi (la zona del plano más cercana a él que a
+// ningún otro territorio) recortada a un radio máximo de tierra (lo que crea la costa del país,
+// con sus bahías y penínsulas) — y lo suaviza para que las fronteras se vean orgánicas, no
+// cuadriculadas. Como la celda de Voronoi de un punto siempre es convexa y contiene a su
+// territorio, se puede muestrear con rayos desde el centro (búsqueda binaria por rayo) sin
+// necesidad de ninguna librería de geometría. El polígono viaja al cliente como un path SVG
+// listo para pintar (t.path); el cliente no calcula nada.
+function computeTerritoryShapes(territories, W, H) {
+  const sites = Object.keys(territories).map((id) => ({ id, x: territories[id].x, y: territories[id].y }));
+  const LAND_R = 56;   // radio máximo de tierra alrededor de cada territorio (crea la costa)
+  const RAYS = 40;     // rayos por territorio (tras suavizar quedan 80 vértices)
+  const EDGE = 4;      // margen mínimo con el borde del lienzo
+
+  function isMine(px, py, myId) {
+    if (px < EDGE || px > W - EDGE || py < EDGE || py > H - EDGE) return false;
+    let best = null, bd = Infinity;
+    for (const s of sites) {
+      const dx = s.x - px, dy = s.y - py;
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = s.id; }
+    }
+    return best === myId;
+  }
+
+  for (const s of sites) {
+    const pts = [];
+    for (let k = 0; k < RAYS; k++) {
+      const th = (k / RAYS) * Math.PI * 2;
+      const ct = Math.cos(th), st = Math.sin(th);
+      let lo = 0, hi = LAND_R;
+      for (let i = 0; i < 9; i++) {
+        const mid = (lo + hi) / 2;
+        if (isMine(s.x + ct * mid, s.y + st * mid, s.id)) lo = mid; else hi = mid;
+      }
+      pts.push([s.x + ct * lo, s.y + st * lo]);
+    }
+    // Una pasada de suavizado de Chaikin: convierte el polígono anguloso en una frontera orgánica.
+    const sm = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      sm.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25]);
+      sm.push([a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    territories[s.id].path = 'M' + sm.map((p) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('L') + 'Z';
+  }
+}
+
 // Genera un tablero nuevo y distinto cada partida: elige TERRITORIES_PER_ERA regiones al azar de
-// cada pool de Era (data.js tiene el doble de candidatas por Era) y las conecta con un grafo
-// aleatorio — conectado dentro de cada Era, más un puente al azar con la Era anterior — y por
-// último calcula la disposición orgánica de todo el conjunto (layoutTerritories).
+// cada pool de Era (data.js tiene el doble de candidatas por Era), las conecta con un grafo
+// aleatorio, asigna a cada territorio una clase de guarnición, calcula la disposición orgánica
+// de todo el conjunto y, por último, los polígonos del mapa político.
 function generateBoard() {
   const chosenByEra = {};
   for (const era of [1, 2, 3]) {
@@ -185,6 +238,8 @@ function generateBoard() {
       r.owner = null;
       r.armies = 0;
       r.open = false;
+      r.wonder = null;
+      r.unitClass = TROOP_CLASS_KEYS[Math.floor(Math.random() * TROOP_CLASS_KEYS.length)];
       territories[r.id] = r;
     }
   }
@@ -217,11 +272,12 @@ function generateBoard() {
   }
 
   layoutTerritories(territories, MAP_W, MAP_H);
+  computeTerritoryShapes(territories, MAP_W, MAP_H);
   return territories;
 }
 
 function openEraTerritories(room, era) {
-  const garrison = TROOP_TYPES[era].garrison;
+  const garrison = ERA_GARRISON[era];
   for (const id in room.territories) {
     if (room.territories[id].era === era) {
       room.territories[id].open = true;
@@ -231,9 +287,18 @@ function openEraTerritories(room, era) {
   }
 }
 
-function troopName(era, count) {
-  const t = TROOP_TYPES[era] || TROOP_TYPES[1];
-  return count === 1 ? t.singular : t.plural;
+// Nombre histórico de una clase de tropa en una Era concreta (ej. inf en Era I -> "Hoplitas").
+function unitName(cls, era) {
+  const c = TROOP_CLASSES[cls] || TROOP_CLASSES.inf;
+  return (c.byEra[era] || c.byEra[1]).name;
+}
+function unitIcon(cls, era) {
+  const c = TROOP_CLASSES[cls] || TROOP_CLASSES.inf;
+  return (c.byEra[era] || c.byEra[1]).icon;
+}
+// La clase que tiene ventaja CONTRA la clase dada (la que la vence).
+function counterOf(cls) {
+  return TROOP_CLASS_KEYS.find((k) => TROOP_CLASSES[k].beats === cls) || TROOP_CLASS_KEYS[0];
 }
 
 function log(room, msg) {
@@ -265,11 +330,20 @@ function playerById(room, id) { return room.players.find((p) => p.id === id); }
 function ownedTerritories(room, playerId, era) {
   return Object.values(room.territories).filter((t) => t.owner === playerId && (era ? t.era === era : true));
 }
+function ownedWonders(room, playerId) {
+  return Object.values(room.territories).filter((t) => t.wonder && t.owner === playerId);
+}
+function openCount(room) {
+  return Object.values(room.territories).filter((t) => t.open).length;
+}
+function dominationNeeded(room) {
+  return Math.ceil(openCount(room) * DOMINATION_RATIO);
+}
 function publicPlayer(p) {
   return {
-    id: p.id, name: p.name, archetype: p.archetype, gloria: p.gloria, reserve: p.reserve,
+    id: p.id, name: p.name, leader: p.leader, gloria: p.gloria, reserve: p.reserve,
     characterCount: p.characters.length, isBot: !!p.isBot,
-    resources: p.resources || 0, troopLevels: p.troopLevels || { 1: 1, 2: 1, 3: 1 },
+    resources: p.resources || 0, troopLevels: p.troopLevels || { inf: 1, cab: 1, arq: 1 },
   };
 }
 
@@ -280,8 +354,11 @@ function publicState(room) {
     era: room.era,
     round: room.round || null,
     maxPlayers: room.maxPlayers,
-    archetypes: ARCHETYPES,
-    troopTypes: TROOP_TYPES,
+    leaders: LEADERS,
+    troopClasses: TROOP_CLASSES,
+    wonderCost: WONDER_COST,
+    wondersToWin: WONDERS_TO_WIN,
+    dominationNeeded: dominationNeeded(room),
     eraInfo: ERA_INFO[room.era],
     territories: room.territories,
     players: room.players.map(publicPlayer),
@@ -292,6 +369,7 @@ function publicState(room) {
     resolveLog: room.phase === 'resolve' ? room.resolveLog : null,
     simposioResult: room.phase === 'simposio' ? room.simposioResult : null,
     finalResult: room.phase === 'fin' ? room.finalResult : null,
+    victory: room.phase === 'fin' ? room.victory || null : null,
   };
 }
 
@@ -307,6 +385,38 @@ function emitRoom(room, notices = {}) {
   for (const p of room.players) {
     pushToPlayer(p.id, { ...state, you: { id: p.id, characters: p.characters, shield: p.shield }, notice: notices[p.id] || null });
   }
+}
+
+// Termina la partida inmediatamente con un ganador y un motivo (dominación, cultura o gloria).
+// El ganador va primero en el ranking; el resto se ordena por Gloria como desempate visual.
+function endGame(room, winnerId, type) {
+  clearTimeout(room.timer);
+  room.phase = 'fin';
+  const winner = playerById(room, winnerId);
+  const rest = room.players.filter((p) => p.id !== winnerId).sort((a, b) => b.gloria - a.gloria);
+  const ranking = winner ? [winner, ...rest] : [...room.players].sort((a, b) => b.gloria - a.gloria);
+  room.finalResult = ranking.map((p) => ({ name: p.name, gloria: p.gloria, territorios: ownedTerritories(room, p.id).length }));
+  const labels = {
+    dominacion: `🗺️ Victoria por DOMINACIÓN: ${winner ? winner.name : '?'} controla ${dominationNeeded(room)} o más territorios.`,
+    cultura: `🏛️ Victoria por CULTURA: ${winner ? winner.name : '?'} controla ${WONDERS_TO_WIN} Maravillas.`,
+    gloria: `🏆 Victoria por GLORIA: ${winner ? winner.name : '?'} termina la Era III con más Gloria.`,
+  };
+  room.victory = { type, winner: winner ? winner.name : null, detalle: labels[type] || '' };
+  room.phaseEndsAt = null;
+  emitRoom(room);
+}
+
+// Comprueba, al final de una ronda resuelta, si alguien ha ganado ya por Dominación o por
+// Cultura. Devuelve {winnerId, type} o null. (La de Gloria solo se decide al final de la Era III.)
+function checkInstantVictory(room) {
+  const needed = dominationNeeded(room);
+  for (const p of room.players) {
+    if (ownedTerritories(room, p.id).filter((t) => t.open).length >= needed) return { winnerId: p.id, type: 'dominacion' };
+  }
+  for (const p of room.players) {
+    if (ownedWonders(room, p.id).length >= WONDERS_TO_WIN) return { winnerId: p.id, type: 'cultura' };
+  }
+  return null;
 }
 
 // ---------- máquina de fases ----------
@@ -351,7 +461,7 @@ function runStep(room) {
     for (const p of room.players) {
       const owned = ownedTerritories(room, p.id, room.era);
       let gain = owned.length * 2;
-      if (owned.length === 4) gain += 1;
+      if (owned.length >= TERRITORIES_PER_ERA / 2) gain += 1;
       if (room.era === 3 && p.doubleEra3) gain *= 2;
       p.gloria += gain;
       result.push({ name: p.name, territorios: owned.length, ganancia: gain });
@@ -366,6 +476,14 @@ function runStep(room) {
 
 function advanceStep(room) {
   clearTimeout(room.timer);
+  // Si la última ronda dejó una victoria instantánea pendiente (dominación/cultura),
+  // se ejecuta ahora — así el grupo ve primero el registro de la ronda y después el final.
+  if (room.pendingVictory) {
+    const v = room.pendingVictory;
+    room.pendingVictory = null;
+    endGame(room, v.winnerId, v.type);
+    return;
+  }
   room.stepIdx++;
   if (room.stepIdx >= room.steps.length) {
     if (room.era < 3) {
@@ -374,14 +492,11 @@ function advanceStep(room) {
       room.stepIdx = 0;
       runStep(room);
     } else {
-      room.phase = 'fin';
       const ranking = [...room.players].sort((a, b) => {
         if (b.gloria !== a.gloria) return b.gloria - a.gloria;
         return ownedTerritories(room, b.id).length - ownedTerritories(room, a.id).length;
       });
-      room.finalResult = ranking.map((p) => ({ name: p.name, gloria: p.gloria, territorios: ownedTerritories(room, p.id).length }));
-      room.phaseEndsAt = null;
-      emitRoom(room);
+      endGame(room, ranking[0].id, 'gloria');
     }
     return;
   }
@@ -401,35 +516,51 @@ function botPickOrder(room, bot) {
     ? territories.filter((t) => t.era === room.era && t.owner === null)
     : [];
 
-  // Objetivos "normales": vecinos de un territorio propio con legiones de sobra.
+  // Objetivos "normales": vecinos de un territorio propio con tropas de sobra. Se guarda si la
+  // clase del origen tiene ventaja sobre la del objetivo, para preferir esos ataques.
   const regularOptions = [];
   for (const src of mine) {
     if (src.armies <= 1) continue;
     for (const nId of src.neighbors) {
       const n = room.territories[nId];
-      if (n && n.open && n.owner !== bot.id) regularOptions.push({ src, target: n });
+      if (n && n.open && n.owner !== bot.id) {
+        regularOptions.push({ src, target: n, favorable: TROOP_CLASSES[src.unitClass].beats === n.unitClass });
+      }
     }
   }
+  // Preferencia por los ataques con ventaja de clase.
+  regularOptions.sort((a, b) => (b.favorable ? 1 : 0) - (a.favorable ? 1 : 0));
 
-  const roll = Math.random();
+  const r = Math.random();
 
-  if (bot.reserve >= 1 && bootstrapTargets.length && roll < 0.4) {
+  if (bot.reserve >= 1 && bootstrapTargets.length && r < 0.4) {
     const target = bootstrapTargets[Math.floor(Math.random() * bootstrapTargets.length)];
     const amount = Math.max(1, Math.min(bot.reserve, 1 + Math.floor(Math.random() * 2)));
-    return { type: 'atacar', to: target.id, amount };
+    // Al colonizar elige la clase que vence a la guarnición local.
+    return { type: 'atacar', mode: 'asalto', to: target.id, amount, unitClass: counterOf(target.unitClass) };
   }
-  if (regularOptions.length && roll < 0.65) {
-    const pick = regularOptions[Math.floor(Math.random() * regularOptions.length)];
+  if (regularOptions.length && r < 0.65) {
+    const pick = regularOptions[Math.floor(Math.random() * Math.min(2, regularOptions.length))];
+    // Contra un defensor claramente más fuerte, a veces asedia o hace una incursión en vez de asaltar.
+    const defenderIsPlayer = !!pick.target.owner;
+    const outnumbered = pick.target.armies >= pick.src.armies;
+    let mode = 'asalto';
+    const mr = Math.random();
+    if (outnumbered && mr < 0.4) mode = 'asedio';
+    else if (defenderIsPlayer && mr < 0.55) {
+      const owner = playerById(room, pick.target.owner);
+      if (owner && (owner.resources || 0) >= 3) mode = 'incursion';
+    }
     const maxAmount = pick.src.armies - 1;
     const amount = Math.max(1, Math.min(maxAmount, 1 + Math.floor(Math.random() * 2)));
-    return { type: 'atacar', to: pick.target.id, from: pick.src.id, amount };
+    return { type: 'atacar', mode, to: pick.target.id, from: pick.src.id, amount };
   }
-  if (bot.reserve >= 1 && mine.length && roll < 0.85) {
+  if (bot.reserve >= 1 && mine.length && r < 0.85) {
     const target = mine[Math.floor(Math.random() * mine.length)];
     const amount = Math.max(1, Math.min(bot.reserve, 1 + Math.floor(Math.random() * 2)));
     return { type: 'reforzar', territoryId: target.id, amount };
   }
-  if (roll < 0.93) return { type: 'reclutar' };
+  if (r < 0.93) return { type: 'reclutar' };
   const others_ = room.players.filter((p) => p.id !== bot.id);
   if (others_.length) return { type: 'espiar', targetId: others_[Math.floor(Math.random() * others_.length)].id };
   return { type: 'reclutar' };
@@ -441,16 +572,27 @@ function botMaybeLevelUp(room, bot) {
   if (!bot.troopLevels) return;
   if (Math.random() > 0.5) return;
   const affordable = [];
-  for (let era = 1; era <= room.era; era++) {
-    const troopDef = TROOP_TYPES[era];
-    const currentLevel = bot.troopLevels[era] || 1;
-    const nextLevelDef = troopDef.levels.find((l) => l.level === currentLevel + 1);
-    if (nextLevelDef && (bot.resources || 0) >= nextLevelDef.cost + 3) affordable.push(era);
+  for (const cls of TROOP_CLASS_KEYS) {
+    const currentLevel = bot.troopLevels[cls] || 1;
+    const nextLevelDef = TROOP_CLASSES[cls].levels.find((l) => l.level === currentLevel + 1);
+    if (!nextLevelDef) continue;
+    const cost = Math.max(1, nextLevelDef.cost - (bot.leader === 'suntzu' ? 2 : 0));
+    if ((bot.resources || 0) >= cost + 3) affordable.push(cls);
   }
   if (affordable.length) {
-    const era = affordable[Math.floor(Math.random() * affordable.length)];
-    actions.level_up_troop({ era }, { playerId: bot.id });
+    const cls = affordable[Math.floor(Math.random() * affordable.length)];
+    actions.level_up_troop({ cls }, { playerId: bot.id });
   }
+}
+
+// Y en construir Maravillas, si van sobrados de Recursos (la vía de victoria cultural).
+function botMaybeWonder(room, bot) {
+  if ((bot.resources || 0) < WONDER_COST + 4) return;
+  if (Math.random() > 0.4) return;
+  const candidates = ownedTerritories(room, bot.id).filter((t) => t.open && !t.wonder);
+  if (!candidates.length) return;
+  const t = candidates[Math.floor(Math.random() * candidates.length)];
+  actions.construir_maravilla({ territoryId: t.id }, { playerId: bot.id });
 }
 
 function scheduleBots(room) {
@@ -464,6 +606,7 @@ function scheduleBots(room) {
         const order = botPickOrder(r, bot);
         actions.submit_order({ order }, { playerId: bot.id });
         botMaybeLevelUp(r, bot);
+        botMaybeWonder(r, bot);
       } else if (phase === 'desafio') {
         const d = r.currentDesafio;
         let choice;
@@ -486,7 +629,7 @@ function applyCharacterEffect(room, p, card, resolveLog) {
       if (rivalTerritories.length) {
         const t = rivalTerritories[Math.floor(Math.random() * rivalTerritories.length)];
         t.armies -= 1; p.reserve += 1;
-        resolveLog.push(`César le roba 1 ${troopName(t.era, 1)} a ${t.name}.`);
+        resolveLog.push(`César le roba 1 tropa a ${t.name}.`);
       }
       break;
     }
@@ -501,7 +644,7 @@ function applyCharacterEffect(room, p, card, resolveLog) {
         if (territs.length) {
           const t = territs.reduce((a, b) => (a.armies < b.armies ? a : b));
           t.armies -= 1;
-          resolveLog.push(`El Imperio de Gengis Kan debilita ${t.name} de ${rival.name} (-1 ${troopName(t.era, 1)}).`);
+          resolveLog.push(`El Imperio de Gengis Kan debilita ${t.name} de ${rival.name} (-1 tropa).`);
         }
       }
       break;
@@ -535,9 +678,8 @@ function resolveOrders(room) {
       const t = room.territories[o.territoryId];
       if (t && t.owner === p.id) {
         const amt = Math.max(0, Math.min(o.amount || 0, p.reserve));
-        const bonus = p.archetype === 'comerciante' && amt > 0 ? 1 : 0;
-        t.armies += amt + bonus; p.reserve -= amt;
-        resolveLog.push(`${p.name} refuerza ${t.name} con ${amt} ${troopName(t.era, amt)}.` + (bonus ? ` (+1 ${troopName(t.era, 1)} gratis del Comerciante)` : ''));
+        t.armies += amt; p.reserve -= amt;
+        resolveLog.push(`${p.name} refuerza ${t.name} con ${amt} tropa(s) de ${unitName(t.unitClass, t.era)}.`);
       }
     }
   }
@@ -550,12 +692,12 @@ function resolveOrders(room) {
         if (target.hideOrders) {
           resolveLog.push(`${p.name} intenta espiar a ${target.name}, pero Maquiavelo lo impide.`);
         } else {
-          const info = ownedTerritories(room, target.id).map((t) => `${t.name}(${t.armies})`).join(', ') || 'ningún territorio';
+          const info = ownedTerritories(room, target.id).map((t) => `${t.name}(${t.armies} ${unitIcon(t.unitClass, t.era)})`).join(', ') || 'ningún territorio';
           notices[p.id] = { type: 'spy_result', target: target.name, info };
           resolveLog.push(`${p.name} espía a ${target.name}.`);
-          if (p.archetype === 'estratega') {
+          if (p.leader === 'anibal') {
             p.reserve += 1;
-            resolveLog.push(`${p.name} (Estratega) gana 1 ${troopName(room.era, 1)} extra por espiar.`);
+            resolveLog.push(`${p.name} (El Táctico) gana 1 tropa extra de reserva por espiar.`);
           }
         }
       }
@@ -581,16 +723,71 @@ function resolveOrders(room) {
       const t = room.territories[o.to];
       if (!t || !t.open || t.owner === p.id) continue;
 
+      const mode = ['asalto', 'asedio', 'incursion'].includes(o.mode) ? o.mode : 'asalto';
       const isBootstrap = room.round === 1 && t.era === room.era && t.owner === null;
+      const defenderPlayer = t.owner ? playerById(room, t.owner) : null;
+
+      // ---- ASEDIO: duelo de 1 dado por bando; el perdedor pierde 1 tropa. Nadie se mueve. ----
+      if (mode === 'asedio' && !isBootstrap) {
+        const source = room.territories[o.from];
+        if (!source || source.owner !== p.id || !source.neighbors.includes(t.id) || source.armies < 2) {
+          resolveLog.push(`${p.name} no tiene un territorio válido con tropas de sobra para asediar ${t.name}.`);
+          continue;
+        }
+        const aCounter = TROOP_CLASSES[source.unitClass].beats === t.unitClass;
+        const dCounter = TROOP_CLASSES[t.unitClass].beats === source.unitClass;
+        const aVal = roll(1)[0] + (aCounter ? 1 : 0);
+        const dVal = roll(1)[0] + (dCounter ? 1 : 0);
+        if (aVal > dVal) {
+          t.armies = Math.max(0, t.armies - 1);
+          resolveLog.push(`💣 ${p.name} asedia ${t.name} desde ${source.name} (${aVal} vs ${dVal}): la guarnición pierde 1 tropa (quedan ${t.armies}).${defenderPlayer ? ` ${defenderPlayer.name} bebe 1 sorbo.` : ''}`);
+        } else {
+          source.armies = Math.max(1, source.armies - 1);
+          resolveLog.push(`💣 ${p.name} asedia ${t.name} (${aVal} vs ${dVal}) y la defensa aguanta: pierde 1 tropa y bebe 1 sorbo.`);
+        }
+        continue;
+      }
+
+      // ---- INCURSIÓN: si ganas el duelo, robas hasta 3 Recursos al dueño. Nadie conquista. ----
+      if (mode === 'incursion' && !isBootstrap) {
+        const source = room.territories[o.from];
+        if (!source || source.owner !== p.id || !source.neighbors.includes(t.id) || source.armies < 2) {
+          resolveLog.push(`${p.name} no tiene un territorio válido con tropas de sobra para una incursión en ${t.name}.`);
+          continue;
+        }
+        if (!defenderPlayer) {
+          resolveLog.push(`${p.name} intenta una incursión en ${t.name}, pero es territorio neutral: no hay Recursos que robar.`);
+          continue;
+        }
+        const aCounter = TROOP_CLASSES[source.unitClass].beats === t.unitClass;
+        const dCounter = TROOP_CLASSES[t.unitClass].beats === source.unitClass;
+        const aVal = roll(1)[0] + (aCounter ? 1 : 0);
+        const dVal = roll(1)[0] + (dCounter ? 1 : 0);
+        if (aVal > dVal) {
+          const steal = Math.min(3, defenderPlayer.resources || 0);
+          defenderPlayer.resources = (defenderPlayer.resources || 0) - steal;
+          p.resources = (p.resources || 0) + steal;
+          resolveLog.push(`🐎 ${p.name} lanza una incursión sobre ${t.name} (${aVal} vs ${dVal}) y roba ${steal} Recurso(s) a ${defenderPlayer.name}, que bebe 1 sorbo.`);
+        } else {
+          source.armies = Math.max(1, source.armies - 1);
+          resolveLog.push(`🐎 La incursión de ${p.name} sobre ${t.name} fracasa (${aVal} vs ${dVal}): pierde 1 tropa y bebe 1 sorbo.`);
+        }
+        continue;
+      }
+
+      // ---- ASALTO (o colonización de territorio libre en la 1ª ronda de la Era) ----
       let source = null;
       let amount;
+      let attackClass;
 
       if (isBootstrap) {
-        // Territorio libre en la 1ª ronda de la Era: se desembarca directamente desde la reserva.
+        // Territorio libre en la 1ª ronda de la Era: se desembarca directamente desde la reserva,
+        // eligiendo con qué clase de tropa se ocupa.
         amount = Math.max(1, Math.min(o.amount || 0, p.reserve));
-        if (amount < 1 || p.reserve < 1) { resolveLog.push(`${p.name} no tiene ${troopName(t.era, 2)} de reserva para desembarcar en ${t.name}.`); continue; }
+        if (amount < 1 || p.reserve < 1) { resolveLog.push(`${p.name} no tiene tropas de reserva para desembarcar en ${t.name}.`); continue; }
+        attackClass = TROOP_CLASS_KEYS.includes(o.unitClass) ? o.unitClass : TROOP_CLASS_KEYS[Math.floor(Math.random() * TROOP_CLASS_KEYS.length)];
       } else {
-        // Ataque normal: hace falta un territorio propio vecino con legiones de sobra —
+        // Ataque normal: hace falta un territorio propio vecino con tropas de sobra —
         // las unidades que atacan son, literalmente, las que hay estacionadas ahí.
         source = room.territories[o.from];
         if (!source || source.owner !== p.id || !source.neighbors.includes(t.id)) {
@@ -598,26 +795,26 @@ function resolveOrders(room) {
           continue;
         }
         amount = Math.max(1, Math.min(o.amount || 0, source.armies - 1));
-        if (amount < 1 || source.armies < 2) { resolveLog.push(`${p.name} no tiene ${troopName(source.era, 2)} de sobra en ${source.name} para atacar.`); continue; }
+        if (amount < 1 || source.armies < 2) { resolveLog.push(`${p.name} no tiene tropas de sobra en ${source.name} para atacar.`); continue; }
+        attackClass = source.unitClass;
       }
 
       if (isBootstrap) p.reserve -= amount;
 
-      const defenderPlayer = t.owner ? playerById(room, t.owner) : null;
-      const dBonus = !!(defenderPlayer && (defenderPlayer.archetype === 'filosofo' || defenderPlayer.extraDefenseDie));
-      const aBonus = p.archetype === 'explorador' && isBootstrap;
-      // Nivel de la tropa: source.era es de dónde salen las tropas atacantes (o t.era si vienen
-      // directamente de la reserva al desembarcar en un territorio libre); t.era es la tropa que
-      // defiende. Cada nivel por encima de 1 añade +1 dado; el nivel 3 además gana los empates.
-      const attackEra = source ? source.era : t.era;
-      const aTroopDef = TROOP_TYPES[attackEra] || TROOP_TYPES[1];
-      const aLevelNum = (p.troopLevels && p.troopLevels[attackEra]) || 1;
-      const aLevel = (aTroopDef.levels && aTroopDef.levels.find((l) => l.level === aLevelNum)) || { diceBonus: 0, winsTies: false };
-      const dTroopDef = TROOP_TYPES[t.era] || TROOP_TYPES[1];
-      const dLevelNum = (defenderPlayer && defenderPlayer.troopLevels && defenderPlayer.troopLevels[t.era]) || 1;
-      const dLevel = (dTroopDef.levels && dTroopDef.levels.find((l) => l.level === dLevelNum)) || { diceBonus: 0, winsTies: false };
-      const aDice = roll(Math.min(amount, 3) + (aBonus ? 1 : 0) + aLevel.diceBonus);
-      const dDice = roll(Math.min(t.armies, 2) + (dBonus ? 1 : 0) + dLevel.diceBonus);
+      const dBonus = !!(defenderPlayer && (defenderPlayer.leader === 'juana' || defenderPlayer.extraDefenseDie));
+      const aBonus = p.leader === 'zhenghe' && isBootstrap;
+      // Ventaja de clase (piedra-papel-tijera): +1 dado si tu clase vence a la del rival.
+      const aCounter = TROOP_CLASSES[attackClass].beats === t.unitClass;
+      const dCounter = TROOP_CLASSES[t.unitClass].beats === attackClass;
+      // Nivel de la tropa: se compra por clase y vale toda la partida (+1 dado desde nivel 2;
+      // el nivel 3 además gana los empates, que normalmente favorecen a quien defiende).
+      const aLevelNum = (p.troopLevels && p.troopLevels[attackClass]) || 1;
+      const aLevel = TROOP_CLASSES[attackClass].levels.find((l) => l.level === aLevelNum) || { diceBonus: 0, winsTies: false };
+      const dLevelNum = (defenderPlayer && defenderPlayer.troopLevels && defenderPlayer.troopLevels[t.unitClass]) || 1;
+      const dLevel = TROOP_CLASSES[t.unitClass].levels.find((l) => l.level === dLevelNum) || { diceBonus: 0, winsTies: false };
+
+      const aDice = roll(Math.min(amount, 3) + (aBonus ? 1 : 0) + (aCounter ? 1 : 0) + aLevel.diceBonus);
+      const dDice = roll(Math.min(t.armies, 2) + (dBonus ? 1 : 0) + (dCounter ? 1 : 0) + dLevel.diceBonus);
       let aLoss = 0, dLoss = 0;
       const cmp = Math.min(aDice.length, dDice.length);
       for (let i = 0; i < cmp; i++) {
@@ -627,30 +824,49 @@ function resolveOrders(room) {
         else aLoss++;
       }
       if (p.shield && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); p.shield = false; resolveLog.push(`${p.name} usa el escudo de Diógenes y evita 1 baja.`); }
-      if (p.archetype === 'guerrero' && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); resolveLog.push(`${p.name} (Guerrero) evita 1 baja en combate.`); }
+      if (p.leader === 'alejandro' && aLoss > 0) { aLoss = Math.max(0, aLoss - 1); resolveLog.push(`${p.name} (El Conquistador) evita 1 baja en combate.`); }
       const survivors = amount - aLoss;
       t.armies = Math.max(0, t.armies - dLoss);
       const originTxt = source ? ` desde ${source.name}` : '';
+      const classTxt = ` con sus ${unitName(attackClass, source ? source.era : t.era)}${aCounter ? ' (¡ventaja de clase!)' : ''}`;
 
       if (t.armies <= 0 && survivors > 0) {
         const prevOwnerName = defenderPlayer ? defenderPlayer.name : 'los locales';
-        if (source) source.armies -= amount; // todas las legiones comprometidas abandonan el origen (bajas + las que se mudan)
-        t.owner = p.id; t.armies = survivors;
-        resolveLog.push(`${p.name} conquista ${t.name}${originTxt} con ${survivors} ${troopName(t.era, survivors)} (antes de ${prevOwnerName}). ${prevOwnerName} bebe ${dLoss} sorbo(s).`);
+        const wasRival = !!defenderPlayer;
+        if (source) source.armies -= amount; // todas las tropas comprometidas abandonan el origen (bajas + las que se mudan)
+        t.owner = p.id; t.armies = survivors; t.unitClass = attackClass;
+        resolveLog.push(`⚔️ ${p.name} conquista ${t.name}${originTxt}${classTxt}, con ${survivors} superviviente(s) (antes de ${prevOwnerName}). ${prevOwnerName} bebe ${dLoss} sorbo(s).`);
+        if (t.wonder) resolveLog.push(`🏛️ ¡${t.wonder.name} cambia de manos y ahora es de ${p.name}!`);
+        if (wasRival && p.leader === 'bolivar') {
+          p.gloria += 1;
+          resolveLog.push(`${p.name} (El Libertador) gana +1 Gloria por liberar ${t.name}.`);
+        }
       } else {
         if (source) source.armies -= aLoss; // solo se pierden las bajas; el resto vuelve al origen
         t.armies = Math.max(1, t.armies);
-        resolveLog.push(`${p.name} ataca ${t.name}${originTxt} y fracasa. ${p.name} bebe ${aLoss} sorbo(s).`);
+        resolveLog.push(`⚔️ ${p.name} ataca ${t.name}${originTxt}${classTxt} y fracasa. ${p.name} bebe ${aLoss} sorbo(s).`);
       }
     }
   }
 
-  // Ingreso de Recursos: 1 por cada territorio que controles al final de la ronda — cuanto más
-  // mapa controlas, más rápido puedes mejorar tus tropas. Sin mensaje en el registro para no
-  // saturarlo; el total se ve siempre en tu propia ficha.
+  // Ingreso de Recursos: 1 por cada territorio que controles al final de la ronda (Mansa Musa
+  // gana 1 extra). Sin mensaje en el registro para no saturarlo; el total se ve en tu ficha.
   for (const p of room.players) {
     const owned = ownedTerritories(room, p.id).length;
-    if (owned) p.resources = (p.resources || 0) + owned;
+    let income = owned;
+    if (p.leader === 'mansamusa') income += 1;
+    if (income) p.resources = (p.resources || 0) + income;
+  }
+
+  // ¿Alguien ha ganado ya por Dominación o Cultura? Se anuncia en el registro y, al pulsar
+  // "continuar", la partida salta directamente a la pantalla final.
+  const victory = checkInstantVictory(room);
+  if (victory) {
+    room.pendingVictory = victory;
+    const vp = playerById(room, victory.winnerId);
+    resolveLog.push(victory.type === 'dominacion'
+      ? `🗺️ ¡${vp.name} controla ${dominationNeeded(room)} territorios o más! VICTORIA POR DOMINACIÓN.`
+      : `🏛️ ¡${vp.name} controla ${WONDERS_TO_WIN} Maravillas! VICTORIA POR CULTURA.`);
   }
 
   room.resolveLog = resolveLog;
@@ -684,7 +900,7 @@ function resolveDesafio(room) {
         else {
           const t = ownedTerritories(room, p.id);
           if (t.length) t[0].armies = Math.max(1, t[0].armies - 1);
-          resolveLog.push(`${p.name} fracasa en los Alpes (${dice}): pierde 1 ${t.length ? troopName(t[0].era, 1) : 'legión'} y bebe 2 sorbos.`);
+          resolveLog.push(`${p.name} fracasa en los Alpes (${dice}): pierde 1 tropa y bebe 2 sorbos.`);
         }
       } else { p.gloria += 1; resolveLog.push(`${p.name} va por mar, seguro: +1 Gloria.`); }
     }
@@ -693,13 +909,16 @@ function resolveDesafio(room) {
     for (const voted of Object.values(room.desafioResponses)) tally[voted] = (tally[voted] || 0) + 1;
     let winnerId = null, max = 0;
     for (const id in tally) if (tally[id] > max) { max = tally[id]; winnerId = id; }
-    if (winnerId) {
-      const winner = playerById(room, winnerId);
+    // Blindaje: el voto podría llegar con un valor que no sea un id de jugador real (cliente
+    // buggeado o manipulado) — sin esta comprobación, winner sería undefined y tumbaría el
+    // servidor entero al leer winner.leader.
+    const winner = winnerId ? playerById(room, winnerId) : null;
+    if (winner) {
       let gain = 2;
-      if (winner.archetype === 'diplomatico') gain *= 2;
+      if (winner.leader === 'pericles') gain *= 2;
       winner.gloria += gain;
       resolveLog.push(`${winner.name} gana el debate con ${max} voto(s): +${gain} Gloria. Los demás beben 1 sorbo.`);
-    } else resolveLog.push('Nadie votó a tiempo, el debate queda en tablas.');
+    } else resolveLog.push('Nadie votó a un jugador válido, el debate queda en tablas.');
   }
 
   room.resolveLog = resolveLog;
@@ -723,6 +942,7 @@ const actions = {
     const room = {
       code, hostId: ctx.playerId, players: [], phase: 'lobby', era: 1,
       territories: generateBoard(), log: [], desafioCursor: 0, maxPlayers: total,
+      wonderDeck: shuffle(WONDERS),
     };
     rooms[code] = room;
     room.players.push(makePlayer(ctx.playerId, name || 'Jugador', false));
@@ -744,12 +964,12 @@ const actions = {
     return { ok: true, code };
   },
 
-  choose_archetype({ archetype }, ctx) {
+  choose_leader({ leader }, ctx) {
     const room = rooms[playerRoom[ctx.playerId]];
-    if (!room || room.phase !== 'lobby' || !ARCHETYPES[archetype]) return { error: 'No disponible.' };
-    if (room.players.some((p) => p.archetype === archetype && p.id !== ctx.playerId)) return { error: 'Ese arquetipo ya está cogido.' };
+    if (!room || room.phase !== 'lobby' || !LEADERS[leader]) return { error: 'No disponible.' };
+    if (room.players.some((p) => p.leader === leader && p.id !== ctx.playerId)) return { error: 'Ese líder ya está cogido.' };
     const p = playerById(room, ctx.playerId);
-    if (p) p.archetype = archetype;
+    if (p) p.leader = leader;
     emitRoom(room);
     return { ok: true };
   },
@@ -758,7 +978,7 @@ const actions = {
     const room = rooms[playerRoom[ctx.playerId]];
     if (!room || room.hostId !== ctx.playerId) return { error: 'Solo el anfitrión puede empezar.' };
     if (room.players.length !== room.maxPlayers) return { error: `Hacen falta ${room.maxPlayers} jugadores.` };
-    if (room.players.some((p) => !p.archetype)) return { error: 'Falta elegir Arquetipo.' };
+    if (room.players.some((p) => !p.leader)) return { error: 'Falta elegir Líder.' };
     room.steps = buildEraSteps();
     room.stepIdx = 0;
     runStep(room);
@@ -766,7 +986,7 @@ const actions = {
   },
 
   // Reinicia la partida sin tener que crear una sala nueva ni volver a compartir código:
-  // vuelve al lobby, genera un mapa nuevo y resetea el progreso, pero conserva jugadores y arquetipos.
+  // vuelve al lobby, genera un mapa nuevo y resetea el progreso, pero conserva jugadores y líderes.
   restart_room(_, ctx) {
     const room = rooms[playerRoom[ctx.playerId]];
     if (!room) return { error: 'Sala no encontrada.' };
@@ -779,6 +999,9 @@ const actions = {
     room.log = [];
     room.desafioCursor = 0;
     room.eraDeckTaken = new Set();
+    room.wonderDeck = shuffle(WONDERS);
+    room.pendingVictory = null;
+    room.victory = null;
     for (const p of room.players) {
       p.gloria = 0;
       p.reserve = 0;
@@ -788,7 +1011,7 @@ const actions = {
       p.hideOrders = false;
       p.doubleEra3 = false;
       p.resources = 0;
-      p.troopLevels = { 1: 1, 2: 1, 3: 1 };
+      p.troopLevels = { inf: 1, cab: 1, arq: 1 };
     }
     log(room, 'El anfitrión ha reiniciado la partida — nuevo mapa, mismos jugadores.');
     emitRoom(room);
@@ -804,27 +1027,50 @@ const actions = {
     return { ok: true };
   },
 
-  // Mejora PARA SIEMPRE (mientras dure la partida) el nivel de un tipo de tropa: sube el bonus de
-  // dados de combate de ESE jugador para todas las tropas de esa Era, presentes y futuras. Cuesta
-  // Recursos (crecientes por nivel) y solo se puede hacer sobre una Era ya empezada. No consume el
-  // turno/orden de la ronda — es una decisión aparte, se puede hacer en cualquier momento.
-  level_up_troop({ era }, ctx) {
+  // Mejora PARA SIEMPRE (mientras dure la partida) el nivel de una CLASE de tropa: sube el bonus
+  // de dados de combate de ESE jugador para todas sus tropas de esa clase, en todas las Épocas,
+  // presentes y futuras. Cuesta Recursos (crecientes por nivel; Sun Tzu paga 2 menos). No consume
+  // el turno/orden de la ronda — es una decisión aparte, se puede hacer en cualquier momento.
+  level_up_troop({ cls }, ctx) {
     const room = rooms[playerRoom[ctx.playerId]];
     if (!room) return { error: 'Sala no encontrada.' };
-    const eraNum = parseInt(era, 10);
-    const troopDef = TROOP_TYPES[eraNum];
-    if (!troopDef) return { error: 'Tipo de tropa no válido.' };
-    if (eraNum > room.era) return { error: 'Esa Era todavía no ha empezado.' };
+    if (!TROOP_CLASS_KEYS.includes(cls)) return { error: 'Clase de tropa no válida.' };
     const p = playerById(room, ctx.playerId);
     if (!p) return { error: 'Jugador no encontrado.' };
-    if (!p.troopLevels) p.troopLevels = { 1: 1, 2: 1, 3: 1 };
-    const currentLevel = p.troopLevels[eraNum] || 1;
-    const nextLevelDef = troopDef.levels.find((l) => l.level === currentLevel + 1);
-    if (!nextLevelDef) return { error: 'Esa tropa ya está al nivel máximo.' };
-    if ((p.resources || 0) < nextLevelDef.cost) return { error: `Te faltan Recursos (necesitas ${nextLevelDef.cost}, tienes ${p.resources || 0}).` };
-    p.resources -= nextLevelDef.cost;
-    p.troopLevels[eraNum] = currentLevel + 1;
-    log(room, `${p.name} mejora sus ${troopName(eraNum, 2)} a nivel ${currentLevel + 1}: ${nextLevelDef.name}.`);
+    if (!p.troopLevels) p.troopLevels = { inf: 1, cab: 1, arq: 1 };
+    const currentLevel = p.troopLevels[cls] || 1;
+    const nextLevelDef = TROOP_CLASSES[cls].levels.find((l) => l.level === currentLevel + 1);
+    if (!nextLevelDef) return { error: 'Esa clase ya está al nivel máximo.' };
+    const cost = Math.max(1, nextLevelDef.cost - (p.leader === 'suntzu' ? 2 : 0));
+    if ((p.resources || 0) < cost) return { error: `Te faltan Recursos (necesitas ${cost}, tienes ${p.resources || 0}).` };
+    p.resources -= cost;
+    p.troopLevels[cls] = currentLevel + 1;
+    log(room, `${p.name} mejora su ${TROOP_CLASSES[cls].clase} a nivel ${currentLevel + 1} (${nextLevelDef.name}).`);
+    emitRoom(room);
+    return { ok: true };
+  },
+
+  // Construye una Maravilla en un territorio propio (una por territorio). Cuesta Recursos y NO
+  // consume la orden de la ronda. La maravilla queda ligada al territorio: si te lo conquistan,
+  // cambia de dueño. Controlar 3 a la vez gana la partida por Cultura al instante.
+  construir_maravilla({ territoryId }, ctx) {
+    const room = rooms[playerRoom[ctx.playerId]];
+    if (!room) return { error: 'Sala no encontrada.' };
+    const p = playerById(room, ctx.playerId);
+    if (!p) return { error: 'Jugador no encontrado.' };
+    const t = room.territories[territoryId];
+    if (!t || !t.open || t.owner !== p.id) return { error: 'Solo puedes construir en un territorio tuyo.' };
+    if (t.wonder) return { error: `${t.name} ya tiene una Maravilla (${t.wonder.name}).` };
+    if (!room.wonderDeck || !room.wonderDeck.length) return { error: 'Ya no quedan Maravillas por construir.' };
+    if ((p.resources || 0) < WONDER_COST) return { error: `Te faltan Recursos (necesitas ${WONDER_COST}, tienes ${p.resources || 0}).` };
+    p.resources -= WONDER_COST;
+    t.wonder = room.wonderDeck.pop();
+    log(room, `🏛️ ${p.name} construye ${t.wonder.name} en ${t.name} (${ownedWonders(room, p.id).length}/${WONDERS_TO_WIN} Maravillas).`);
+    // La victoria cultural puede llegar en el momento mismo de construir la 3ª.
+    if (ownedWonders(room, p.id).length >= WONDERS_TO_WIN) {
+      endGame(room, p.id, 'cultura');
+      return { ok: true };
+    }
     emitRoom(room);
     return { ok: true };
   },
@@ -848,7 +1094,7 @@ const actions = {
 
 // ---------- servidor HTTP ----------
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
 
 function serveStatic(req, res, pathname) {
   let file = pathname === '/' ? '/index.html' : pathname;

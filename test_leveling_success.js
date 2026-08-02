@@ -1,9 +1,9 @@
-// Verifica el camino "feliz" completo de level_up_troop, sin depender de la suerte en un solo
-// intento: reintenta la conquista inicial (bootstrap, ~37% de ganar en un solo intento con 3
-// dados vs 2) en salas nuevas hasta que una tenga éxito, deja avanzar la partida (rondas, Desafíos,
-// Simposios y nuevas Eras si hace falta) hasta acumular Recursos suficientes, y entonces comprueba
-// la subida de nivel 1->2->3 completa, el tope de nivel, y que el bonus de nivel se refleje de
-// verdad en publicState() para el jugador que mejora (y NO para los demás).
+// Verifica los caminos "felices" que dependen de dados, sin depender de la suerte de una sola
+// tirada: reintenta la colonización inicial (eligiendo la clase con ventaja sobre la guarnición)
+// en salas nuevas hasta que una tenga éxito; comprueba que el territorio conquistado adopta la
+// clase elegida; deja avanzar la partida acumulando Recursos y verifica la mejora de clase
+// (1->2), su aislamiento por jugador, y — si el ritmo de la partida lo permite — la construcción
+// de una Maravilla real con su coste.
 const http = require('http');
 const BASE = 'http://127.0.0.1:3000';
 
@@ -38,11 +38,8 @@ function openStream(playerId, onState) {
   });
 }
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+const COUNTER = { inf: 'arq', cab: 'inf', arq: 'cab' }; // clase que vence a cada clase (arq>inf, inf>cab, cab>arq)
 
-// Ejecuta UN paso de progreso desde cualquier fase en la que esté la partida: si toca orden, ambos
-// reclutan (no gastan nada, y el ingreso de Recursos por territorio se genera igual al resolver);
-// si toca Desafío, ambos votan la primera opción; si toca resolución/simposio/intro de Era, solo
-// hace falta "continuar". Así el bucle nunca se queda atascado en una fase que requiere acción.
 async function advanceOnce(host, guest) {
   const phase = host.state.phase;
   if (phase === 'orders') {
@@ -50,8 +47,12 @@ async function advanceOnce(host, guest) {
     await apiPost('submit_order', { playerId: guest.id, order: { type: 'reclutar' } });
     await wait(400);
   } else if (phase === 'desafio') {
-    await apiPost('submit_desafio_choice', { playerId: host.id, choice: 0 });
-    await apiPost('submit_desafio_choice', { playerId: guest.id, choice: 0 });
+    // En el desafío de votación hay que votar a un JUGADOR (id), no un índice.
+    const d = host.state.desafio;
+    const hostChoice = d && d.tipo === 'votacion' ? guest.id : 0;
+    const guestChoice = d && d.tipo === 'votacion' ? host.id : 0;
+    await apiPost('submit_desafio_choice', { playerId: host.id, choice: hostChoice });
+    await apiPost('submit_desafio_choice', { playerId: guest.id, choice: guestChoice });
     await wait(400);
   } else if (phase === 'resolve' || phase === 'simposio' || phase === 'era_intro') {
     await apiPost('continue', { playerId: host.id });
@@ -82,27 +83,30 @@ async function attemptOnce(attemptNum) {
   const created = await apiPost('create_room', { playerId: host.id, name: 'Host', maxPlayers: 2, botsWanted: 0 });
   await apiPost('join_room', { playerId: guest.id, name: 'Guest', code: created.code });
   await wait(150);
-  await apiPost('choose_archetype', { playerId: host.id, archetype: 'guerrero' }); // -1 baja siempre ayuda a conquistar
-  await apiPost('choose_archetype', { playerId: guest.id, archetype: 'comerciante' });
+  await apiPost('choose_leader', { playerId: host.id, leader: 'alejandro' }); // -1 baja en combate: ayuda a colonizar
+  await apiPost('choose_leader', { playerId: guest.id, leader: 'pericles' });
   await wait(150);
   await apiPost('start_game', { playerId: host.id });
   await wait(300);
-  // start_game solo entra en 'era_intro' (muestra la flavor text) — hace falta 'continue' para
-  // avanzar a la ronda 1 de verdad. Sin esto, submit_order se rechaza siempre con "No es el
-  // momento." y CUALQUIER intento de ataque falla sin llegar a tirar un solo dado (este fue el
-  // motivo real de que las ejecuciones anteriores nunca vieran una conquista: no era mala suerte).
+  // start_game entra en 'era_intro'; hace falta 'continue' para llegar a la ronda 1 de verdad.
   if (host.state.phase === 'era_intro') { await apiPost('continue', { playerId: host.id }); await wait(300); }
 
   const target = Object.values(host.state.territories).find(t => t.era === 1 && t.open && !t.owner);
+  const chosenClass = COUNTER[target.unitClass]; // colonizamos con la clase que vence a la guarnición
   const fullReserve = host.state.players.find(p => p.id === host.id).reserve;
-  const orderResult = await apiPost('submit_order', { playerId: host.id, order: { type: 'atacar', to: target.id, amount: fullReserve } });
-  if (orderResult.error) throw new Error('FALLO inesperado al enviar la orden de ataque: ' + orderResult.error);
+  const orderResult = await apiPost('submit_order', { playerId: host.id, order: { type: 'atacar', mode: 'asalto', to: target.id, amount: fullReserve, unitClass: chosenClass } });
+  if (orderResult.error) throw new Error('FALLO inesperado al enviar la orden: ' + orderResult.error);
   await apiPost('submit_order', { playerId: guest.id, order: { type: 'reclutar' } });
   await wait(400);
   if (host.state.phase === 'resolve') { await apiPost('continue', { playerId: host.id }); await wait(300); }
 
-  const conquered = Object.values(host.state.territories).filter(t => t.owner === host.id).length > 0;
-  console.log(`Intento ${attemptNum}: objetivo ${target.id} con ${fullReserve} legiones ->`, conquered ? 'CONQUISTADO' : 'fallido');
+  const conquered = host.state.territories[target.id].owner === host.id;
+  console.log(`Intento ${attemptNum}: colonizar ${target.id} (guarnición ${target.unitClass}) con clase ${chosenClass} ->`, conquered ? 'CONQUISTADO' : 'fallido');
+  if (conquered) {
+    const t = host.state.territories[target.id];
+    console.log('Clase del territorio tras la conquista:', t.unitClass, '(esperada', chosenClass + ')');
+    if (t.unitClass !== chosenClass) throw new Error('FALLO: el territorio conquistado no adoptó la clase elegida al colonizar');
+  }
   return conquered ? { host, guest } : null;
 }
 
@@ -111,47 +115,49 @@ async function run() {
   for (let i = 1; i <= 10 && !result; i++) {
     result = await attemptOnce(i);
   }
-  if (!result) throw new Error('No se logró ninguna conquista inicial en 10 intentos (posible regresión en las probabilidades de combate).');
+  if (!result) throw new Error('No se logró ninguna colonización en 10 intentos (posible regresión en las probabilidades de combate).');
 
   const { host, guest } = result;
 
+  // Mejora de clase 1 -> 2 (coste 8, sin descuento: el host lleva a Alejandro, no a Sun Tzu).
   const got8 = await playUntilResources(host, 8, 40, guest);
   const hostResources = host.state.players.find(p => p.id === host.id).resources;
   console.log('Recursos acumulados por el host:', hostResources, '(fase actual:', host.state.phase + ')');
   if (!got8) throw new Error('FALLO: no se acumularon 8 Recursos para probar la mejora (' + hostResources + ')');
 
-  // Nivel 1 -> 2
-  const up1 = await apiPost('level_up_troop', { playerId: host.id, era: 1 });
-  if (up1.error) throw new Error('FALLO al mejorar 1->2: ' + up1.error);
+  const up1 = await apiPost('level_up_troop', { playerId: host.id, cls: 'cab' });
+  if (up1.error) throw new Error('FALLO al mejorar cab 1->2: ' + up1.error);
   await wait(300);
   let hostP = host.state.players.find(p => p.id === host.id);
-  console.log('Nivel tras mejora 1->2:', hostP.troopLevels[1], '(esperado 2) · Recursos restantes:', hostP.resources);
-  if (hostP.troopLevels[1] !== 2) throw new Error('FALLO: el nivel no subió a 2');
+  console.log('Nivel de Caballería tras mejorar:', hostP.troopLevels.cab, '(esperado 2) · Recursos restantes:', hostP.resources);
+  if (hostP.troopLevels.cab !== 2) throw new Error('FALLO: el nivel de cab no subió a 2');
+  if (hostP.troopLevels.inf !== 1 || hostP.troopLevels.arq !== 1) throw new Error('FALLO: la mejora de cab tocó otras clases');
 
-  const guestLevel = guest.state.players.find(p => p.id === guest.id).troopLevels[1];
-  console.log('Nivel del invitado (no debería haber cambiado):', guestLevel, '(esperado 1)');
-  if (guestLevel !== 1) throw new Error('FALLO: el nivel del invitado cambió sin que él mejorara nada');
+  const guestLevels = guest.state.players.find(p => p.id === guest.id).troopLevels;
+  console.log('Niveles del invitado (no deberían haber cambiado):', JSON.stringify(guestLevels));
+  if (guestLevels.cab !== 1) throw new Error('FALLO: el nivel del invitado cambió sin que él mejorara nada');
 
-  // Acumular para 2 -> 3 (cuesta 16).
-  const got16 = await playUntilResources(host, 16, 60, guest);
+  // Maravilla real: acumular WONDER_COST (15) y construir en el territorio del host.
+  const got15 = await playUntilResources(host, 15, 60, guest);
   hostP = host.state.players.find(p => p.id === host.id);
-  console.log('Recursos antes de mejorar 2->3:', hostP.resources, '(fase actual:', host.state.phase + ')');
-  if (got16) {
-    const up2 = await apiPost('level_up_troop', { playerId: host.id, era: 1 });
-    if (up2.error) throw new Error('FALLO al mejorar 2->3: ' + up2.error);
+  console.log('Recursos antes de la Maravilla:', hostP.resources, '(fase actual:', host.state.phase + ')');
+  if (got15) {
+    const myTerr = Object.values(host.state.territories).find(t => t.owner === host.id && !t.wonder);
+    if (!myTerr) throw new Error('FALLO: el host no tiene territorio donde construir');
+    const built = await apiPost('construir_maravilla', { playerId: host.id, territoryId: myTerr.id });
+    if (built.error) throw new Error('FALLO al construir Maravilla con fondos: ' + built.error);
     await wait(300);
-    hostP = host.state.players.find(p => p.id === host.id);
-    console.log('Nivel tras mejora 2->3:', hostP.troopLevels[1], '(esperado 3)');
-    if (hostP.troopLevels[1] !== 3) throw new Error('FALLO: el nivel no subió a 3');
-
-    const overCap = await apiPost('level_up_troop', { playerId: host.id, era: 1 });
-    console.log('Intento de mejorar por encima del nivel 3 ->', overCap.error);
-    if (!overCap.error) throw new Error('FALLO: se permitió subir de nivel por encima del máximo');
+    const tNow = host.state.territories[myTerr.id];
+    console.log('Maravilla construida:', tNow.wonder && tNow.wonder.name, 'en', tNow.name);
+    if (!tNow.wonder || !tNow.wonder.name) throw new Error('FALLO: el territorio no tiene la Maravilla construida');
+    const dup = await apiPost('construir_maravilla', { playerId: host.id, territoryId: myTerr.id });
+    console.log('Segunda Maravilla en el mismo territorio ->', dup.error);
+    if (!dup.error) throw new Error('FALLO: se permitió construir 2 Maravillas en el mismo territorio');
   } else {
-    console.log('AVISO: no se acumularon 16 Recursos en esta ejecución para probar 2->3 (' + hostP.resources + '/16, partida en fase ' + host.state.phase + ') — 1->2 ya quedó verificado arriba, que era el objetivo principal.');
+    console.log('AVISO: la partida no dio para acumular 15 Recursos (' + hostP.resources + '/15, fase ' + host.state.phase + ') — la mejora de clase 1->2 ya quedó verificada arriba, que era el objetivo principal.');
   }
 
-  console.log('TEST OK: camino feliz de level_up_troop verificado (conquista real, ingreso de Recursos, mejora 1->2, aislamiento por jugador, y tope de nivel).');
+  console.log('TEST OK: colonización con clase elegida, mejora de clase con aislamiento por jugador' + (got15 ? ', y Maravilla real construida.' : '.'));
   process.exit(0);
 }
 run().catch(e => { console.error('EXCEPCION', e.message); process.exit(1); });

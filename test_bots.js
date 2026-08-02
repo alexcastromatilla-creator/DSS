@@ -56,14 +56,14 @@ async function run() {
   const created = await apiPost('create_room', { playerId: human.id, name: human.name, maxPlayers: 3, botsWanted: 2 });
   console.log('create_room ->', created);
   await wait(300);
-  console.log('Jugadores en la sala:', human.state.players.map(p => `${p.name}${p.isBot ? ' [BOT]' : ''} (${p.archetype})`));
+  console.log('Jugadores en la sala:', human.state.players.map(p => `${p.name}${p.isBot ? ' [BOT]' : ''} (${p.leader})`));
 
   if (human.state.players.length !== 3) throw new Error('Los bots no se añadieron correctamente');
 
-  console.log('--- Elegir arquetipo humano ---');
-  const freeArch = Object.keys(human.state.archetypes).find(a => !human.state.players.some(p => p.archetype === a));
-  const archRes = await apiPost('choose_archetype', { playerId: human.id, archetype: freeArch });
-  if (archRes.error) throw new Error('Error eligiendo arquetipo: ' + archRes.error);
+  console.log('--- Elegir líder humano ---');
+  const freeLeader = Object.keys(human.state.leaders).find(a => !human.state.players.some(p => p.leader === a));
+  const leaderRes = await apiPost('choose_leader', { playerId: human.id, leader: freeLeader });
+  if (leaderRes.error) throw new Error('Error eligiendo líder: ' + leaderRes.error);
   await wait(200);
 
   console.log('--- Empezar partida (debería aceptar con 1 humano + 2 bots) ---');
@@ -104,15 +104,15 @@ async function run() {
       let order;
       if (bootstrapTargets.length && Math.random() < 0.5) {
         const target = bootstrapTargets[Math.floor(Math.random() * bootstrapTargets.length)];
-        order = { type: 'atacar', to: target.id, amount: 1 };
+        order = { type: 'atacar', mode: 'asalto', to: target.id, amount: 1, unitClass: 'inf' };
       } else if (regularOptions.length && Math.random() < 0.5) {
         const pick = regularOptions[Math.floor(Math.random() * regularOptions.length)];
         const amount = Math.max(1, Math.min(pick.src.armies - 1, 1 + Math.floor(Math.random() * 2)));
-        order = { type: 'atacar', to: pick.target.id, from: pick.src.id, amount };
+        order = { type: 'atacar', mode: 'asalto', to: pick.target.id, from: pick.src.id, amount };
       } else order = { type: 'reclutar' };
       const or = await apiPost('submit_order', { playerId: human.id, order });
       if (or.error) console.log('ERROR submit_order humano', or);
-      if (Math.random() < 0.3) await apiPost('level_up_troop', { playerId: human.id, era: human.state.era });
+      if (Math.random() < 0.3) await apiPost('level_up_troop', { playerId: human.id, cls: 'inf' });
     } else if (phase === 'resolve' || phase === 'simposio') {
       console.log(`[${phase}]`, human.state.resolveLog || human.state.simposioResult);
       await apiPost('continue', { playerId: human.id });
@@ -135,7 +135,9 @@ async function run() {
 
   if (human.state.phase !== 'fin') { console.error('FALLO: no llegó a "fin" (posible bot colgado)'); process.exit(1); }
   const anyBotLeveledUp = human.state.players.some(p => p.isBot && p.troopLevels && Object.values(p.troopLevels).some(l => l > 1));
-  console.log('¿Algún bot mejoró alguna tropa durante la partida (botMaybeLevelUp)?', anyBotLeveledUp);
+  console.log('¿Algún bot mejoró alguna clase durante la partida (botMaybeLevelUp)?', anyBotLeveledUp);
+  console.log('Victoria:', JSON.stringify(human.state.victory));
+  if (!human.state.victory || !human.state.victory.type) { console.error('FALLO: partida terminada sin motivo de victoria'); process.exit(1); }
   console.log('TEST OK: partida en solitario contra 2 bots completada sin errores.');
   process.exit(0);
 }

@@ -1,5 +1,5 @@
-// Datos del juego: pools de regiones (el tablero se genera al azar cada partida),
-// tropas por Época (con niveles mejorables), personajes, desafíos y monumentos.
+// Datos del juego: pools de regiones (el tablero se genera al azar cada partida), líderes
+// históricos jugables, clases de tropa con ventajas entre sí, maravillas, personajes y desafíos.
 
 // Pool de posibles regiones por Era — cada partida se eligen 8 al azar de cada pool de 12
 // y se generan conexiones (vecindad) también al azar, así el mapa cambia cada vez aunque
@@ -71,60 +71,152 @@ const ERA_INFO = [
   },
 ];
 
-// Tropas por Época: cambian de nombre e icono, y los territorios abiertos en Épocas más
-// tardías empiezan con más guarnición. Cada tipo de tropa tiene 3 niveles — se mejoran para
-// SIEMPRE (toda tropa de ese tipo, la que ya tienes y la que consigas después) gastando
-// Recursos (ver server.js: cada territorio que controlas genera 1 Recurso por ronda).
-const TROOP_TYPES = {
-  1: {
-    singular: 'legión', plural: 'legiones', icon: '🛡️', garrison: 2,
+// ---------------------------------------------------------------------------
+// CLASES DE TROPA — 3 clases con ventaja circular (piedra-papel-tijera):
+//   Infantería vence a Caballería (muros de picas y escudos),
+//   Caballería vence a los tiradores A distancia (los arrolla antes de recargar),
+//   A distancia vence a Infantería (la acribilla desde lejos).
+// La ventaja da +1 dado en combate contra la clase batida (atacando y defendiendo).
+// Cada clase cambia de nombre e icono según la Época (Hoplitas → Almogávares → Mosqueteros...)
+// pero su rol táctico y su nivel de mejora son los mismos toda la partida: los niveles se
+// compran POR CLASE y valen para todas las Épocas (tecnología compartida).
+// Cada territorio tiene UNA clase de guarnición (visible en el mapa): al colonizar un territorio
+// libre eliges con qué clase lo ocupas; al conquistar, tus tropas llevan la clase del territorio
+// desde el que atacas.
+// ---------------------------------------------------------------------------
+const TROOP_CLASSES = {
+  inf: {
+    key: 'inf',
+    clase: 'Infantería',
+    beats: 'cab',
+    tacticaDesc: 'Vence a la Caballería: sus picas y escudos frenan cualquier carga (+1 dado contra ella).',
+    byEra: {
+      1: { name: 'Hoplitas', icon: '🛡️' },
+      2: { name: 'Almogávares', icon: '⚔️' },
+      3: { name: 'Mosqueteros', icon: '🔫' },
+    },
     levels: [
-      { level: 1, name: 'Legión', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
-      { level: 2, name: 'Legión veterana', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
-      { level: 3, name: 'Legión de élite', desc: 'Igual que veterana, y además gana los empates en combate (normalmente los gana quien defiende).', diceBonus: 1, winsTies: true, cost: 16 },
+      { level: 1, name: 'Recluta', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
+      { level: 2, name: 'Veterana', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
+      { level: 3, name: 'De élite', desc: 'Igual que Veterana, y además gana los empates en combate (normalmente los gana quien defiende).', diceBonus: 1, winsTies: true, cost: 16 },
     ],
   },
-  2: {
-    singular: 'jinete', plural: 'jinetes', icon: '🐎', garrison: 3,
+  cab: {
+    key: 'cab',
+    clase: 'Caballería',
+    beats: 'arq',
+    tacticaDesc: 'Vence a las tropas A distancia: las arrolla antes de que recarguen (+1 dado contra ellas).',
+    byEra: {
+      1: { name: 'Hetairoi', icon: '🐎' },
+      2: { name: 'Caballeros', icon: '🏇' },
+      3: { name: 'Húsares', icon: '🐎' },
+    },
     levels: [
-      { level: 1, name: 'Jinete', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
-      { level: 2, name: 'Jinete veterano', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
-      { level: 3, name: 'Jinete de élite', desc: 'Igual que veterano, y además gana los empates en combate.', diceBonus: 1, winsTies: true, cost: 16 },
+      { level: 1, name: 'Recluta', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
+      { level: 2, name: 'Veterana', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
+      { level: 3, name: 'De élite', desc: 'Igual que Veterana, y además gana los empates en combate (normalmente los gana quien defiende).', diceBonus: 1, winsTies: true, cost: 16 },
     ],
   },
-  3: {
-    singular: 'regimiento', plural: 'regimientos', icon: '🔫', garrison: 4,
+  arq: {
+    key: 'arq',
+    clase: 'A distancia',
+    beats: 'inf',
+    tacticaDesc: 'Vence a la Infantería: la acribilla desde lejos antes del choque (+1 dado contra ella).',
+    byEra: {
+      1: { name: 'Arqueros cretenses', icon: '🏹' },
+      2: { name: 'Ballesteros', icon: '🏹' },
+      3: { name: 'Artillería', icon: '💣' },
+    },
     levels: [
-      { level: 1, name: 'Regimiento', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
-      { level: 2, name: 'Regimiento veterano', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
-      { level: 3, name: 'Regimiento de élite', desc: 'Igual que veterano, y además gana los empates en combate.', diceBonus: 1, winsTies: true, cost: 16 },
+      { level: 1, name: 'Recluta', desc: 'Dados de combate normales (hasta 3 al atacar, hasta 2 al defender).', diceBonus: 0, winsTies: false, cost: 0 },
+      { level: 2, name: 'Veterana', desc: '+1 dado extra tanto al atacar como al defender.', diceBonus: 1, winsTies: false, cost: 8 },
+      { level: 3, name: 'De élite', desc: 'Igual que Veterana, y además gana los empates en combate (normalmente los gana quien defiende).', diceBonus: 1, winsTies: true, cost: 16 },
     ],
   },
 };
+const TROOP_CLASS_KEYS = ['inf', 'cab', 'arq'];
 
-const ARCHETYPES = {
-  filosofo: { name: 'El Filósofo', desc: '+1 dado siempre que defiendes un territorio.', icon: '🦉', color: '#8e7cc3' },
-  estratega: { name: 'El Estratega', desc: 'Al Espiar, además de ver el ejército rival, ganas 1 legión extra de reserva.', icon: '♟️', color: '#4cb8a0' },
-  diplomatico: { name: 'El Diplomático', desc: 'Cuando ganas un Desafío de votación, tu recompensa de Gloria se duplica.', icon: '🕊️', color: '#e1a940' },
-  explorador: { name: 'El Explorador', desc: 'En la 1ª ronda de cada Era (conquistas de territorio neutral), +1 dado atacante.', icon: '🧭', color: '#5aa9e6' },
-  guerrero: { name: 'El Guerrero', desc: 'Siempre pierdes 1 legión menos en combate (mínimo 0).', icon: '⚔️', color: '#e15757' },
-  comerciante: { name: 'El Comerciante', desc: 'Al Reforzar un territorio, añades 1 legión extra gratis.', icon: '⚖️', color: '#c98a3e' },
+// Guarnición inicial de los territorios neutrales según la Era en la que se abren.
+const ERA_GARRISON = { 1: 2, 2: 3, 3: 4 };
+
+// ---------------------------------------------------------------------------
+// LÍDERES HISTÓRICOS jugables (como elegir civilización en Civilization): cada jugador
+// encarna a un líder con un bonus permanente propio. "portrait" apunta a la ilustración
+// en public/images/ (si falta, la interfaz enseña el icono con el mismo marco de cuadro).
+// ---------------------------------------------------------------------------
+const LEADERS = {
+  alejandro: {
+    name: 'Alejandro Magno', title: 'El Conquistador', icon: '🗡️', color: '#e15757', portrait: 'lider_alejandro.png',
+    desc: 'Rey de Macedonia, invicto de Grecia al Indo. Pierdes 1 tropa menos en cada combate (mínimo 0).',
+  },
+  juana: {
+    name: 'Juana de Arco', title: 'La Guardiana', icon: '⚔️', color: '#5aa9e6', portrait: 'lider_juana.png',
+    desc: 'La doncella de Orleans, imbatible tras una muralla. +1 dado siempre que defiendes un territorio.',
+  },
+  anibal: {
+    name: 'Aníbal Barca', title: 'El Táctico', icon: '🐘', color: '#b06ee0', portrait: 'lider_anibal.png',
+    desc: 'El general que cruzó los Alpes. Al Espiar, además de ver el ejército rival, ganas 1 tropa de reserva.',
+  },
+  pericles: {
+    name: 'Pericles', title: 'El Orador', icon: '🏛️', color: '#e1a940', portrait: 'lider_pericles.png',
+    desc: 'La voz de oro de Atenas. Cuando ganas un Desafío de votación, tu recompensa de Gloria se duplica.',
+  },
+  zhenghe: {
+    name: 'Zheng He', title: 'El Navegante', icon: '⛵', color: '#4cb8a0', portrait: 'lider_zhenghe.png',
+    desc: 'Almirante de la flota del tesoro Ming. +1 dado al colonizar territorios libres (1ª ronda de cada Era).',
+  },
+  mansamusa: {
+    name: 'Mansa Musa', title: 'El Áureo', icon: '👑', color: '#c98a3e', portrait: 'lider_mansamusa.png',
+    desc: 'El hombre más rico de la historia. +1 Recurso extra al final de cada ronda.',
+  },
+  bolivar: {
+    name: 'Simón Bolívar', title: 'El Libertador', icon: '🎖️', color: '#6ee0a8', portrait: 'lider_bolivar.png',
+    desc: 'Libertador de seis naciones. +1 Gloria cada vez que conquistas un territorio de un rival.',
+  },
+  suntzu: {
+    name: 'Sun Tzu', title: 'El Maestro', icon: '📜', color: '#8e7cc3', portrait: 'lider_suntzu.png',
+    desc: 'Autor de "El arte de la guerra". Mejorar el nivel de tus tropas te cuesta 2 Recursos menos.',
+  },
 };
 
-const BOT_NAMES = ['Pericles', 'Boudica', 'Atila', 'Nefertiti', 'Zenobia', 'Amanirenas', 'Wu Zetian', 'Saladino'];
+// ---------------------------------------------------------------------------
+// MARAVILLAS — la vía de victoria cultural: se construyen gastando Recursos en un territorio
+// propio (una por territorio). ¡Cuidado! La maravilla pertenece al territorio: si te lo
+// conquistan, la maravilla cambia de dueño. Controlar 3 a la vez = victoria por Cultura.
+// ---------------------------------------------------------------------------
+const WONDERS = [
+  { id: 'partenon', name: 'El Partenón', icon: '🏛️' },
+  { id: 'coloso', name: 'El Coloso de Rodas', icon: '🗿' },
+  { id: 'biblioteca', name: 'La Gran Biblioteca', icon: '📜' },
+  { id: 'muralla', name: 'La Gran Muralla', icon: '🧱' },
+  { id: 'santasofia', name: 'Santa Sofía', icon: '🕌' },
+  { id: 'alhambra', name: 'La Alhambra', icon: '🌙' },
+  { id: 'angkor', name: 'Angkor Wat', icon: '🛕' },
+  { id: 'machupicchu', name: 'Machu Picchu', icon: '⛰️' },
+  { id: 'sanpedro', name: 'La Basílica de San Pedro', icon: '⛪' },
+  { id: 'versalles', name: 'El Palacio de Versalles', icon: '👑' },
+];
+const WONDER_COST = 15;
+const WONDERS_TO_WIN = 3;
+
+// Victoria por Dominación: controlar esta fracción de los territorios ABIERTOS al final
+// de cualquier ronda (con 8 abiertos → 5, con 16 → 10, con 24 → 15).
+const DOMINATION_RATIO = 0.6;
+
+const BOT_NAMES = ['Boudica', 'Atila', 'Nefertiti', 'Zenobia', 'Amanirenas', 'Wu Zetian', 'Ramsés II', 'Carlomagno'];
 
 // Mazos de personajes por Era. Los marcados con "coded" tienen efecto mecánico real.
 // "portrait" apunta a la ilustración en public/images/.
 const CHARACTER_DECKS = {
   1: [
-    { id: 'cesar', name: 'Julio César', region: 'Roma', icon: '🏛️', portrait: 'cesar.png', flavor: 'Al reclutarlo, robas 1 legión de un territorio rival (si existe).', coded: 'steal_army' },
-    { id: 'diogenes', name: 'Diógenes de Sinope', region: 'Grecia', icon: '🏺', portrait: 'diogenes.png', flavor: 'Una vez por partida, ignoras la primera derrota en combate sin perder legiones.', coded: 'shield_once' },
+    { id: 'cesar', name: 'Julio César', region: 'Roma', icon: '🏛️', portrait: 'cesar.png', flavor: 'Al reclutarlo, robas 1 tropa de un territorio rival (si existe).', coded: 'steal_army' },
+    { id: 'diogenes', name: 'Diógenes de Sinope', region: 'Grecia', icon: '🏺', portrait: 'diogenes.png', flavor: 'Una vez por partida, ignoras la primera derrota en combate sin perder tropas.', coded: 'shield_once' },
     { id: 'cleopatra', name: 'Cleopatra VII', region: 'Egipto', icon: '👑', portrait: 'cleopatra.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
     { id: 'hipatia', name: 'Hipatia de Alejandría', region: 'Egipto', icon: '📜', portrait: 'hipatia.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
   2: [
-    { id: 'gengis', name: 'Genghis Khan', region: 'Estepas', icon: '🏹', portrait: 'gengis.png', flavor: 'Al reclutarlo, cada rival pierde 1 legión de su territorio más débil.', coded: 'weaken_rivals' },
-    { id: 'avicena', name: 'Avicena (Ibn Sina)', region: 'Persia', icon: '⚗️', portrait: 'avicena.png', flavor: '+1 dado permanente al defender (se acumula con El Filósofo).', coded: 'extra_defense_die' },
+    { id: 'gengis', name: 'Genghis Khan', region: 'Estepas', icon: '🏹', portrait: 'gengis.png', flavor: 'Al reclutarlo, cada rival pierde 1 tropa de su territorio más débil.', coded: 'weaken_rivals' },
+    { id: 'avicena', name: 'Avicena (Ibn Sina)', region: 'Persia', icon: '⚗️', portrait: 'avicena.png', flavor: '+1 dado permanente al defender (se acumula con La Guardiana).', coded: 'extra_defense_die' },
     { id: 'marcopolo', name: 'Marco Polo', region: 'Venecia / Asia', icon: '🐫', portrait: 'marcopolo.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
     { id: 'confucio', name: 'Confucio', region: 'China', icon: '🎋', portrait: 'confucio.png', flavor: 'Carta de prestigio: +1 Gloria al final de la partida.', coded: null },
   ],
@@ -149,7 +241,7 @@ const DESAFIOS = [
     id: 'anibal',
     tipo: 'riesgo',
     titulo: 'La Encrucijada de Aníbal',
-    texto: 'Elige en secreto tu ruta. "Por los Alpes" es alto riesgo: si sale bien (dado 4+), ganas 3 Gloria; si sale mal, pierdes 1 legión y bebes 2 sorbos. "Por mar" es segura: siempre ganas 1 Gloria.',
+    texto: 'Elige en secreto tu ruta. "Por los Alpes" es alto riesgo: si sale bien (dado 4+), ganas 3 Gloria; si sale mal, pierdes 1 tropa y bebes 2 sorbos. "Por mar" es segura: siempre ganas 1 Gloria.',
     opciones: ['Por los Alpes (riesgo)', 'Por mar (seguro)'],
   },
   {
@@ -161,4 +253,9 @@ const DESAFIOS = [
   },
 ];
 
-module.exports = { REGION_POOLS, TERRITORIES_PER_ERA, ERA_INFO, TROOP_TYPES, ARCHETYPES, CHARACTER_DECKS, DESAFIOS, BOT_NAMES };
+module.exports = {
+  REGION_POOLS, TERRITORIES_PER_ERA, ERA_INFO,
+  TROOP_CLASSES, TROOP_CLASS_KEYS, ERA_GARRISON,
+  LEADERS, WONDERS, WONDER_COST, WONDERS_TO_WIN, DOMINATION_RATIO,
+  CHARACTER_DECKS, DESAFIOS, BOT_NAMES,
+};
