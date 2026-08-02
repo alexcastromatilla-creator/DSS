@@ -86,16 +86,15 @@
   .unit-icon { font-size: 1rem; line-height: 1; display: inline-block; animation: idleFloat 3.2s ease-in-out infinite; }
   .unit-icons b { margin-left: 5px; color: var(--accent); font-size: 0.78rem; font-weight: 700; }
   .map-legend { font-size: 0.7rem; line-height: 1.5; margin-bottom: 10px; }
-  .zone-cell { cursor: pointer; }
-  .zone-cell:active { opacity: 0.7 !important; }
+  .terr-shape { cursor: pointer; }
+  .terr-shape:active { opacity: 0.75; }
   @keyframes flashPulse {
     0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: scale(1); }
     50% { box-shadow: 0 0 0 3px var(--accent), 0 2px 10px rgba(0,0,0,0.4); transform: scale(1.03); }
   }
   .territory.flash { animation: flashPulse 0.9s ease-in-out; }
-  .log { font-size: 0.85rem; color: #cbc2d9; max-height: 160px; overflow-y: auto; }
+  .log { font-size: 0.85rem; color: #cbc2d9; max-height: 200px; overflow-y: auto; }
   .log div { padding: 4px 0; border-bottom: 1px solid #382e48; animation: fadeSlideIn 0.25s ease-out; }
-  .timer { text-align: center; font-size: 0.85rem; color: var(--accent); margin-bottom: 8px; }
   .center { text-align: center; }
   .muted { color: #9d92ae; font-size: 0.85rem; }
   .flavor { font-style: italic; color: #cbc2d9; line-height: 1.4; }
@@ -103,7 +102,7 @@
   .rank.first { border: 2px solid var(--accent); animation: glowPulse 1.8s ease-in-out infinite; }
   #err { color: #ff8080; text-align: center; min-height: 20px; font-size: 0.85rem; }
 
-  /* Retratos tipo "consejero" para arquetipos y personajes */
+  /* Retratos: círculo con icono; si hay ilustración real en public/images/ se ve encima. */
   .portrait {
     width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
@@ -112,21 +111,16 @@
   }
   .portrait.big { width: 68px; height: 68px; font-size: 2.1rem; }
   .portrait-row { display: flex; align-items: center; gap: 12px; }
-  .arch-card {
-    display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px;
-  }
-  .arch-card .info { flex: 1; }
-  .arch-card .name { font-weight: 700; margin-bottom: 2px; }
-  .arch-card .desc { font-weight: 400; font-size: 0.8rem; opacity: 0.85; }
 
   .char-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; animation: fadeSlideIn 0.4s ease-out; }
   .char-item .portrait { width: 34px; height: 34px; min-width: 34px; font-size: 1.1rem; }
 
-  /* Marco "cuadro pintado" para los retratos de Personaje: si hay una ilustración real en
-     public/images/ se muestra encima; si no, se ve el icono con el mismo marco ornamentado. */
+  /* Marco "cuadro pintado": si hay ilustración real en public/images/ se muestra encima;
+     si no, se ve el icono con el mismo marco ornamentado. */
   .frame { position: relative; border-radius: 50%; overflow: hidden; flex-shrink: 0;
     box-shadow: 0 0 0 2px #17131d, 0 0 0 4px var(--accent), 0 3px 8px rgba(0,0,0,0.4);
-    animation: idleFloat 4.5s ease-in-out infinite; background: #3a3050; }
+    animation: idleFloat 4.5s ease-in-out infinite; background: #3a3050;
+    display: flex; align-items: center; justify-content: center; }
   .frame::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
     background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 48%, transparent 66%);
     background-size: 220% 220%; animation: sheen 4s ease-in-out infinite; pointer-events: none; }
@@ -140,10 +134,13 @@
     50% { background-position: 100% 100%; }
   }
 
-  /* Barra de progreso para los temporizadores */
-  .progress-wrap { margin-bottom: 10px; }
-  .progress-track { width: 100%; height: 8px; border-radius: 6px; background: #241d2e; overflow: hidden; }
-  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #f0c878); transition: width 1s linear; }
+  /* Tarjetas de líder (pantalla de selección estilo "elige tu civilización") */
+  .leader-card { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; }
+  .leader-card .info { flex: 1; }
+  .leader-card .name { font-weight: 700; margin-bottom: 1px; }
+  .leader-card .ltitle { font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.8; margin-bottom: 3px; }
+  .leader-card .desc { font-weight: 400; font-size: 0.78rem; opacity: 0.85; line-height: 1.3; }
+  .leader-card.chosen .desc, .leader-card.chosen .ltitle { opacity: 0.95; }
 
   /* Animación de dados durante la resolución de combate */
   .dice-row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
@@ -153,8 +150,7 @@
 
   .sparkle-emoji { display: inline-block; animation: sparkle 1.1s ease-out; }
 
-  /* Monumento de fondo: cambia según la Era. Si hay una ilustración real en
-     public/images/ se ve encima; si no, se ve el dibujo vectorial de reserva. */
+  /* Monumento de fondo: cambia según la Era. */
   #monumentBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: 0.16; }
   #monumentBg svg, #monumentBg img { position: absolute; bottom: -4%; left: 50%; transform: translateX(-50%);
     width: 130%; max-width: 900px; animation: monumentPan 40s ease-in-out infinite alternate; }
@@ -165,22 +161,31 @@
   }
   #app { position: relative; z-index: 1; }
 
-  /* Barra persistente de sala: código, reiniciar (anfitrión) y salir */
+  /* Barra persistente de sala: código, Recursos, reiniciar (anfitrión) y salir */
   #roomBar { display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 6px 2px 10px; font-size: 0.8rem; }
   #roomBar .roomBarBtns { display: flex; gap: 6px; }
   button.tiny { width: auto; padding: 6px 10px; font-size: 0.78rem; margin-bottom: 0; border-radius: 20px; }
 
-  /* Panel de tropas y mejoras: escalera de niveles por Época */
+  /* Panel de tropas: una sección por clase, con su ventaja y su escalera de niveles */
   .troop-tier { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #382e48; }
   .troop-tier:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .troop-tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .troop-tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .troop-tier-head .portrait { width: 40px; height: 40px; min-width: 40px; font-size: 1.3rem; }
+  .tactica { font-size: 0.76rem; color: #cbc2d9; margin: 2px 0 8px; line-height: 1.35; }
   .level-ladder { margin-bottom: 8px; }
   .level-row { padding: 4px 0 6px 10px; border-left: 3px solid #3a3050; margin-bottom: 2px; }
   .level-row.level-current { border-left-color: var(--accent); }
   .level-row-title { font-weight: 600; font-size: 0.82rem; }
   .level-row-desc { font-size: 0.74rem; margin-top: 2px; line-height: 1.35; }
   .level-up-btn { font-size: 0.85rem; }
+
+  /* Tabla de vías de victoria */
+  .victory-row { display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    background: #241d2e; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.82rem; }
+  .victory-row .vname { flex: 1; font-weight: 600; }
+  .victory-row .vstat { min-width: 62px; text-align: right; }
+  .victory-note { font-size: 0.72rem; line-height: 1.4; }
 </style>
 </head>
 <body>
@@ -201,92 +206,47 @@ const screen = document.getElementById('screen');
 const errBox = document.getElementById('err');
 
 const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)', 'var(--p5)'];
-// Mismo tamaño de lienzo que usa el servidor para calcular las coordenadas x,y de cada territorio
-// (ver MAP_W/MAP_H y layoutTerritories en server.js) — así el viewBox del SVG encaja exactamente.
+const PLAYER_COLORS_RAW = ['#e15757', '#4cb8a0', '#e1a940', '#5aa9e6', '#b06ee0', '#6ee0a8'];
+// Mismo tamaño de lienzo que usa el servidor para calcular coordenadas y polígonos.
 const MAP_W = 320, MAP_H = 380;
+const CLASS_KEYS = ['inf', 'cab', 'arq'];
+const ERA_LABELS = { 1: 'Era I', 2: 'Era II', 3: 'Era III' };
 
 function colorFor(playerId) {
   if (!state) return '#666';
   const idx = state.players.findIndex(p => p.id === playerId);
-  return idx >= 0 ? PLAYER_COLORS[idx] : '#666';
+  return idx >= 0 ? PLAYER_COLORS_RAW[idx] : '#666';
 }
 function nameFor(playerId) {
   if (!state) return '';
   const p = state.players.find(p => p.id === playerId);
   return p ? p.name : '';
 }
-function troopWord(era, count) {
-  const t = state && state.troopTypes && state.troopTypes[era];
-  if (!t) return count === 1 ? 'legión' : 'legiones';
-  return count === 1 ? t.singular : t.plural;
+function me() { return state && state.players.find(p => p.id === myId); }
+function clsDef(cls) { return state.troopClasses[cls] || state.troopClasses.inf; }
+function clsEraName(cls, era) { const c = clsDef(cls); return (c.byEra[era] || c.byEra[1]).name; }
+function clsEraIcon(cls, era) { const c = clsDef(cls); return (c.byEra[era] || c.byEra[1]).icon; }
+function counterOf(cls) { return CLASS_KEYS.find(k => state.troopClasses[k].beats === cls); }
+// Coste real de subir de nivel una clase para MÍ (Sun Tzu paga 2 menos, igual que en el servidor).
+function myLevelCost(baseCost) {
+  const m = me();
+  return Math.max(1, baseCost - (m && m.leader === 'suntzu' ? 2 : 0));
 }
-function troopIcon(era) {
-  const t = state && state.troopTypes && state.troopTypes[era];
-  return (t && t.icon) || '🛡️';
-}
-// Fila visual de unidades: repite el icono de tropa (según la Época del territorio) una vez por
-// soldado, hasta un máximo legible, y añade el número exacto — así el tablero se ve con "soldados"
-// encima en vez de solo una cifra suelta.
-function unitBadge(era, count) {
-  const icon = troopIcon(era);
-  const n = Math.max(0, count || 0);
+
+// Fila visual de unidades: repite el icono de la clase de guarnición una vez por tropa (máx 6).
+function unitBadge(t) {
+  const icon = clsEraIcon(t.unitClass, t.era);
+  const n = Math.max(0, t.armies || 0);
   if (!n) return `<span class="unit-icons muted">sin tropas</span>`;
-  const cap = 6;
-  const shown = Math.min(n, cap);
+  const shown = Math.min(n, 6);
   const icons = Array.from({ length: shown }, (_, i) => `<span class="unit-icon" style="animation-delay:${(i * 0.15).toFixed(2)}s">${icon}</span>`).join('');
   return `<span class="unit-icons">${icons}<b>×${n}</b></span>`;
 }
-// Marco de "cuadro pintado" para un Personaje: muestra la ilustración real si existe en
-// public/images/<portrait>; si no está (o falla al cargar), se ve el icono con el mismo marco.
-function portraitFrame(character, size) {
+// Marco de "cuadro pintado": ilustración real si existe en public/images/<portrait>, si no el icono.
+function portraitFrame(entity, size) {
   const sizeClass = size || 'medium';
-  const img = character.portrait ? `<img src="/images/${character.portrait}" alt="" onerror="this.remove()">` : '';
-  return `<span class="frame ${sizeClass}">${img}<span class="fallback">${character.icon || '👑'}</span></span>`;
-}
-
-// Panel de tropas y mejoras: para cada Época ya alcanzada, muestra la escalera completa de niveles
-// (qué hace cada uno en detalle, en cuál estás, cuánto cuesta subir) y un botón para mejorar. Subir
-// de nivel es una decisión aparte de tu orden de la ronda — no la gasta, se puede hacer en cualquier
-// momento que tengas Recursos suficientes — y la mejora es PARA SIEMPRE: sube el nivel de todas tus
-// tropas de esa Época, las que ya tienes y las que consigas después (tecnología compartida).
-function renderTroopPanel() {
-  const me = state.players.find(p => p.id === myId);
-  if (!me) return '';
-  const eras = [1, 2, 3].filter(e => e <= state.era);
-  if (!eras.length) return '';
-  const myResources = me.resources || 0;
-  return `<div class="card">
-    <h2>⚔️ Tus tropas y mejoras</h2>
-    <p class="muted" style="margin-bottom:10px;">Tienes <b style="color:var(--accent)">${myResources} 💰 Recursos</b> (ganas 1 por cada territorio que controlas, al final de cada ronda). Mejorar un tipo de tropa es para siempre y afecta a todas tus tropas de esa Época.</p>
-    ${eras.map(e => {
-      const troopDef = state.troopTypes[e];
-      const curLevel = (me.troopLevels && me.troopLevels[e]) || 1;
-      const nextDef = troopDef.levels.find(l => l.level === curLevel + 1);
-      return `
-        <div class="troop-tier">
-          <div class="troop-tier-head">
-            <span class="portrait" style="border-color:var(--accent)">${troopDef.icon}</span>
-            <b>${ERA_LABELS[e]} — ${troopDef.plural}</b>
-          </div>
-          <div class="level-ladder">
-            ${troopDef.levels.map(l => {
-              const status = l.level < curLevel ? '✅' : l.level === curLevel ? '👉' : '🔒';
-              const cls = l.level === curLevel ? 'level-current' : '';
-              return `<div class="level-row ${cls}">
-                <div class="level-row-title">${status} Nivel ${l.level} — ${l.name}${l.cost ? ` <span class="muted">(coste ${l.cost} 💰)</span>` : ' <span class="muted">(inicial)</span>'}</div>
-                <div class="level-row-desc muted">${l.desc}</div>
-              </div>`;
-            }).join('')}
-          </div>
-          ${nextDef ? `<button class="secondary level-up-btn" data-era="${e}" ${myResources < nextDef.cost ? 'disabled' : ''}>⬆️ Mejorar a "${nextDef.name}" (${nextDef.cost} 💰)${myResources < nextDef.cost ? ` — te faltan ${nextDef.cost - myResources}` : ''}</button>` : `<p class="muted center" style="margin-bottom:4px;">Nivel máximo alcanzado en esta Época.</p>`}
-        </div>`;
-    }).join('')}
-  </div>`;
-}
-function wireTroopPanel() {
-  document.querySelectorAll('.level-up-btn').forEach(btn => {
-    btn.onclick = () => call('level_up_troop', { era: parseInt(btn.dataset.era, 10) });
-  });
+  const img = entity.portrait ? `<img src="/images/${entity.portrait}" alt="" onerror="this.remove()">` : '';
+  return `<span class="frame ${sizeClass}">${img}<span class="fallback">${entity.icon || '👑'}</span></span>`;
 }
 
 function showError(msg) {
@@ -301,9 +261,7 @@ function handleNotice(notice) {
   }
 }
 
-// Dibujo vectorial de reserva para el monumento de fondo de cada Era (siempre disponible,
-// no depende de ninguna imagen externa). Si además existe public/images/monumento_eraN.png,
-// esa ilustración real se superpone encima automáticamente.
+// Dibujo vectorial de reserva para el monumento de fondo de cada Era.
 const MONUMENT_SVG = {
   1: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" fill="var(--accent)">
     <polygon points="200,15 350,95 50,95"/>
@@ -334,7 +292,7 @@ function renderMonumentBg() {
   const bg = document.getElementById('monumentBg');
   if (!bg) return;
   const era = (state && state.era) || 1;
-  if (bg.dataset.era === String(era)) return; // ya está pintado para esta Era
+  if (bg.dataset.era === String(era)) return;
   bg.dataset.era = String(era);
   const file = state && state.eraInfo && state.eraInfo.monumento ? state.eraInfo.monumento : `monumento_era${era}.png`;
   bg.innerHTML = `
@@ -349,10 +307,10 @@ function renderRoomBar() {
   if (!bar) return;
   if (!state || !state.code) { bar.innerHTML = ''; return; }
   const isHost = state.players[0] && state.players[0].id === myId;
-  const me = state.players.find(p => p.id === myId);
-  const showResources = me && state.phase !== 'lobby';
+  const m = me();
+  const showResources = m && state.phase !== 'lobby';
   bar.innerHTML = `
-    <span class="muted">Sala ${state.code}${showResources ? ` · 💰 ${me.resources || 0}` : ''}</span>
+    <span class="muted">Sala ${state.code}${showResources ? ` · 💰 ${m.resources || 0}` : ''}</span>
     <span class="roomBarBtns">
       ${isHost ? `<button class="tiny secondary" id="restartBtn">🔄 Reiniciar</button>` : ''}
       <button class="tiny secondary" id="exitBtn">🚪 Salir</button>
@@ -450,9 +408,6 @@ function renderConnect() {
       opt.textContent = i === 0 ? `Ningún bot (${total} humanos)` : `${i} bot${i > 1 ? 's' : ''} (${total - i} humano${total - i > 1 ? 's' : ''})`;
       botsInput.appendChild(opt);
     }
-    // Por defecto, sin bots: así quien crea la sala para jugar con amigos reales no se
-    // encuentra con que los bots ya han ocupado los sitios y sus amigos no pueden entrar.
-    // Quien quiera probar el juego solo/a sube este número a mano.
     botsInput.value = 0;
   }
   maxPlayersInput.onchange = refreshBotsOptions;
@@ -476,8 +431,8 @@ function renderConnect() {
 
 function renderLobby() {
   const isHost = state.players[0] && state.players[0].id === myId;
-  const me = state.players.find(p => p.id === myId);
-  const archOptions = Object.keys(state.archetypes);
+  const m = me();
+  const leaderKeys = Object.keys(state.leaders);
   screen.innerHTML = `
     <div class="card center">
       <div class="muted">Código de sala</div>
@@ -487,44 +442,49 @@ function renderLobby() {
     <div class="card">
       <h2>Jugadores (${state.players.length}/${state.maxPlayers})</h2>
       <div class="players-list">
-        ${state.players.map((p, i) => `
+        ${state.players.map((p, i) => {
+          const L = p.leader ? state.leaders[p.leader] : null;
+          return `
           <div class="player-chip">
             <span class="portrait-row">
-              <span class="portrait" style="background:${p.archetype ? state.archetypes[p.archetype].color : '#3a3050'}22;border-color:${PLAYER_COLORS[i]}">${p.archetype ? state.archetypes[p.archetype].icon : (p.isBot ? '🤖' : '👤')}</span>
+              ${L ? portraitFrame(L, 'small') : `<span class="portrait" style="width:34px;height:34px;min-width:34px;font-size:1.1rem;border-color:${PLAYER_COLORS[i]}">${p.isBot ? '🤖' : '👤'}</span>`}
               <span>${p.isBot ? '🤖 ' : ''}${p.name}${p.id === myId ? ' (tú)' : ''}</span>
             </span>
-            <span class="muted">${p.archetype ? state.archetypes[p.archetype].name : 'eligiendo…'}</span>
-          </div>`).join('')}
+            <span class="muted">${L ? L.name : 'eligiendo líder…'}</span>
+          </div>`;
+        }).join('')}
       </div>
     </div>
     <div class="card">
       <h2>❔ Cómo funciona (resumen rápido)</h2>
       <p class="muted" style="line-height:1.5;">
-        🗺️ <b style="color:var(--text)">Mapa:</b> cada partida genera un país nuevo de 24 territorios en 3 Eras (8 por Era). Al principio solo ves en detalle los de la Era I — el resto del país ya se ve en el mapa, pero como zonas 🔒 sin abrir, que se revelan al llegar su Era.<br><br>
-        ⚔️ <b style="color:var(--text)">Combate:</b> atacas desde un territorio tuyo a un vecino, tirando dados estilo Risk. Si ganas, lo conquistas; si pierdes, solo pierdes las bajas.<br><br>
-        💰 <b style="color:var(--text)">Recursos:</b> cada territorio que controlas te da 1 Recurso por ronda.<br><br>
-        ⬆️ <b style="color:var(--text)">Mejoras:</b> gasta Recursos para subir de nivel tus tropas de cada Época (hasta nivel 3) — la mejora es para siempre y se aplica a todas tus tropas de ese tipo. Cada nivel se explica en detalle durante la partida.
+        👑 <b style="color:var(--text)">Líder:</b> eliges un personaje histórico con un bonus permanente propio.<br><br>
+        🗺️ <b style="color:var(--text)">Mapa:</b> cada partida genera un país nuevo de 24 provincias en 3 Eras. Las de Eras futuras se ven en niebla 🔒 hasta que llegue su momento.<br><br>
+        ⚔️ <b style="color:var(--text)">Tropas:</b> 3 clases — Infantería vence a Caballería, Caballería vence a las tropas A distancia, y éstas vencen a Infantería (+1 dado). Cada territorio tiene una clase de guarnición visible en el mapa.<br><br>
+        🎯 <b style="color:var(--text)">Atacar:</b> Asalto (conquistar), Asedio (desgastar sin arriesgar tanto) o Incursión (robar Recursos).<br><br>
+        🏆 <b style="color:var(--text)">Ganar:</b> por Dominación (controlar la mayoría del mapa), por Cultura (construir 3 Maravillas 🏛️ con Recursos 💰) o por Gloria al final de la Era III.
       </p>
     </div>
     <div class="card">
-      <h2>Elige tu Arquetipo</h2>
-      ${archOptions.map(a => {
-        const arch = state.archetypes[a];
-        const takenBy = state.players.find(p => p.archetype === a && p.id !== myId);
-        const mine = me && me.archetype === a;
-        return `<button class="option-btn arch-card ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-arch="${a}">
-          <span class="portrait" style="background:${arch.color}22;border-color:${arch.color}">${arch.icon}</span>
+      <h2>👑 Elige tu Líder</h2>
+      ${leaderKeys.map(k => {
+        const L = state.leaders[k];
+        const takenBy = state.players.find(p => p.leader === k && p.id !== myId);
+        const mine = m && m.leader === k;
+        return `<button class="option-btn leader-card ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-leader="${k}">
+          ${portraitFrame(L, 'medium')}
           <span class="info">
-            <div class="name">${arch.name} ${takenBy ? '(ocupado)' : ''}</div>
-            <div class="desc">${arch.desc}</div>
+            <div class="name">${L.name} ${takenBy ? `(lo lleva ${takenBy.name})` : ''}</div>
+            <div class="ltitle" style="color:${mine ? '#1b1622' : L.color}">${L.title}</div>
+            <div class="desc">${L.desc}</div>
           </span>
         </button>`;
       }).join('')}
     </div>
     ${isHost ? `<button id="startBtn" ${state.players.length !== state.maxPlayers ? 'disabled' : ''}>${state.players.length !== state.maxPlayers ? `Esperando jugadores (${state.players.length}/${state.maxPlayers})` : 'Empezar partida'}</button>` : `<div class="muted center">Esperando a que el anfitrión empiece la partida…</div>`}
   `;
-  document.querySelectorAll('[data-arch]').forEach(btn => {
-    btn.onclick = () => call('choose_archetype', { archetype: btn.dataset.arch });
+  document.querySelectorAll('[data-leader]').forEach(btn => {
+    btn.onclick = () => call('choose_leader', { leader: btn.dataset.leader });
   });
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.onclick = () => call('start_game');
@@ -537,21 +497,23 @@ function renderEraIntro() {
       <p class="flavor">${state.eraInfo.flavor}</p>
     </div>
     ${renderBoard()}
+    ${renderVictoryPanel()}
     ${renderTroopPanel()}
+    ${renderWonderPanel()}
     <button id="cont">Continuar</button>
   `;
-  wireTroopPanel();
+  wirePanels();
   document.getElementById('cont').onclick = () => call('continue');
 }
 
 function renderOrders() {
-  const me = state.players.find(p => p.id === myId);
+  const m = me();
   const submitted = state.ordersSubmitted.includes(myId);
   const myTerritories = Object.values(state.territories).filter(t => t.open && t.owner === myId);
   const otherPlayers = state.players.filter(p => p.id !== myId);
 
   // Objetivos alcanzables: territorios libres en la 1ª ronda de la Era (se colonizan desde
-  // la reserva), o vecinos de un territorio tuyo con legiones de sobra (ataque "de verdad").
+  // la reserva), o vecinos de un territorio tuyo con tropas de sobra.
   const isBootstrapRound = state.round === 1;
   const bootstrapTargets = isBootstrapRound
     ? Object.values(state.territories).filter(t => t.open && t.era === state.era && !t.owner)
@@ -570,23 +532,24 @@ function renderOrders() {
   reachableIds.forEach(id => attackMap.set(id, state.territories[id]));
   const attackable = [...attackMap.values()];
 
-  // Antes de reconstruir la pantalla, guardamos lo que estuvieras rellenando: si otro
-  // jugador (o un bot) envía su orden mientras tú sigues eligiendo, nos llega un aviso
-  // por el stream y esto se vuelve a renderizar entero — sin esto, perderías tu selección.
+  // Antes de reconstruir la pantalla, guardamos lo que estuvieras rellenando (si otro jugador
+  // envía su orden, esto se vuelve a renderizar entero y sin esto perderías tu selección).
   const prevOrderType = document.getElementById('orderType')?.value;
   const prevTargetTerr = document.getElementById('targetTerr')?.value;
+  const prevAttackMode = document.getElementById('attackMode')?.value;
   const prevFromTerr = document.getElementById('fromTerr')?.value;
   const prevAmount = document.getElementById('amount')?.value;
+  const prevUnitClass = document.getElementById('unitClassSel')?.value;
   const prevTargetPlayer = document.getElementById('targetPlayer')?.value;
 
   screen.innerHTML = `
     ${renderBoard()}
     <div class="card">
       <h2>Tus órdenes — Ronda ${state.round}</h2>
-      <p class="muted">Reserva disponible: ${me.reserve} ${troopWord(state.era, me.reserve)}</p>
+      <p class="muted">Reserva disponible: ${m.reserve} tropa(s) · Recursos: ${m.resources || 0} 💰</p>
       ${submitted ? `<p class="center">Orden enviada. Esperando a los demás (${state.ordersSubmitted.length}/${state.players.length})…</p>` : `
       <select id="orderType">
-        <option value="atacar">⚔️ Atacar</option>
+        <option value="atacar">⚔️ Atacar / Colonizar</option>
         <option value="reforzar">🛡️ Reforzar</option>
         <option value="reclutar">👑 Reclutar Personaje</option>
         <option value="espiar">🕵️ Espiar</option>
@@ -600,33 +563,69 @@ function renderOrders() {
         ${portraitFrame(c, 'small')}
         <span class="muted"><b style="color:var(--text)">${c.name}</b> — ${c.flavor}</span>
       </div>`).join('')}</div>` : ''}
+    ${renderVictoryPanel()}
     ${renderTroopPanel()}
+    ${renderWonderPanel()}
   `;
-  wireTroopPanel();
+  wirePanels();
   if (submitted) return;
 
-  function renderAttackFrom() {
+  function describeTarget(t) {
+    const ownerTxt = t.owner ? nameFor(t.owner) : 'neutral';
+    return `${t.icon || ''} ${t.name} (${ownerTxt}, ${t.armies} ${clsEraIcon(t.unitClass, t.era)} ${clsEraName(t.unitClass, t.era)})`;
+  }
+
+  function renderAttackDetails() {
     const targetEl = document.getElementById('targetTerr');
-    const wrap = document.getElementById('attackFromWrap');
+    const wrap = document.getElementById('attackDetails');
     if (!targetEl || !wrap) return;
     const target = state.territories[targetEl.value];
     const isBootstrap = isBootstrapRound && target.era === state.era && !target.owner;
+    const sources = myTerritories.filter(t => t.armies > 1 && t.neighbors.includes(target.id));
+
     if (isBootstrap) {
+      // Colonización: eliges la CLASE con la que desembarcas desde tu reserva. Se sugiere la
+      // clase con ventaja sobre la guarnición local.
+      const suggested = counterOf(target.unitClass);
       wrap.innerHTML = `
-        <p class="muted">Territorio libre — desembarcas directamente desde tu reserva.</p>
-        <input type="text" id="amount" placeholder="${troopWord(target.era, 2)} desde tu reserva (máx ${me.reserve})">
+        <p class="muted">Territorio libre — desembarcas desde tu reserva y eliges la clase de tropa. La guarnición local es ${clsEraName(target.unitClass, target.era)} ${clsEraIcon(target.unitClass, target.era)}; la clase con ventaja contra ella es ${clsEraName(suggested, state.era)} ${clsEraIcon(suggested, state.era)}.</p>
+        <select id="unitClassSel">
+          ${CLASS_KEYS.map(k => `<option value="${k}" ${k === suggested ? 'selected' : ''}>${clsEraIcon(k, state.era)} ${clsEraName(k, state.era)} (${clsDef(k).clase})${state.troopClasses[k].beats === target.unitClass ? ' — ¡ventaja!' : ''}</option>`).join('')}
+        </select>
+        <input type="text" id="amount" placeholder="Tropas desde tu reserva (máx ${m.reserve})">
       `;
-    } else {
-      const sources = myTerritories.filter(t => t.armies > 1 && t.neighbors.includes(target.id));
-      if (!sources.length) {
-        wrap.innerHTML = `<p class="muted">No tienes ningún territorio con ${troopWord(target.era, 2)} de sobra junto a ${target.name}.</p>`;
+      return;
+    }
+
+    if (!sources.length) {
+      wrap.innerHTML = `<p class="muted">No tienes ningún territorio con tropas de sobra junto a ${target.name}.</p>`;
+      return;
+    }
+
+    const modeEl = document.getElementById('attackMode');
+    const mode = modeEl ? modeEl.value : 'asalto';
+    const canRaid = !!target.owner;
+    wrap.innerHTML = `
+      <select id="attackMode">
+        <option value="asalto">⚔️ Asalto — combate total: si aniquilas la guarnición, conquistas el territorio</option>
+        <option value="asedio">💣 Asedio — duelo a 1 dado: si ganas, el defensor pierde 1 tropa (sin conquistar; arriesgas 1)</option>
+        ${canRaid ? `<option value="incursion">🐎 Incursión — duelo a 1 dado: si ganas, robas hasta 3 Recursos 💰 (sin conquistar)</option>` : ''}
+      </select>
+      <select id="fromTerr">${sources.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} — ${t.armies} ${clsEraIcon(t.unitClass, t.era)} ${clsEraName(t.unitClass, t.era)}${state.troopClasses[t.unitClass].beats === target.unitClass ? ' (¡ventaja de clase!)' : (state.troopClasses[target.unitClass].beats === t.unitClass ? ' (clase en desventaja)' : '')}</option>`).join('')}</select>
+      <div id="amountWrap"></div>
+    `;
+    const modeSel = document.getElementById('attackMode');
+    if (mode && [...modeSel.options].some(o => o.value === mode)) modeSel.value = mode;
+    function refreshAmount() {
+      const wrapA = document.getElementById('amountWrap');
+      if (modeSel.value === 'asalto') {
+        wrapA.innerHTML = `<input type="text" id="amount" placeholder="Tropas a enviar (déjate al menos 1 en el origen)">`;
       } else {
-        wrap.innerHTML = `
-          <select id="fromTerr">${sources.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} (${t.armies} ${troopWord(t.era, t.armies)})</option>`).join('')}</select>
-          <input type="text" id="amount" placeholder="${troopWord(target.era, 2)} a enviar (déjate al menos 1 en el origen)">
-        `;
+        wrapA.innerHTML = `<p class="muted">${modeSel.value === 'asedio' ? 'El asedio no mueve tropas: es un duelo de desgaste a distancia.' : 'La incursión no mueve tropas: es un golpe rápido a la bolsa del rival.'}</p>`;
       }
     }
+    modeSel.onchange = refreshAmount;
+    refreshAmount();
   }
 
   function renderFields() {
@@ -638,15 +637,15 @@ function renderOrders() {
         return;
       }
       fields.innerHTML = `
-        <select id="targetTerr">${attackable.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} (${t.owner ? nameFor(t.owner) : 'neutral'}, ${t.armies} ${troopWord(t.era, t.armies)})</option>`).join('')}</select>
-        <div id="attackFromWrap"></div>
+        <select id="targetTerr">${attackable.map(t => `<option value="${t.id}">${describeTarget(t)}</option>`).join('')}</select>
+        <div id="attackDetails"></div>
       `;
-      document.getElementById('targetTerr').onchange = renderAttackFrom;
-      renderAttackFrom();
+      document.getElementById('targetTerr').onchange = renderAttackDetails;
+      renderAttackDetails();
     } else if (type === 'reforzar') {
       fields.innerHTML = myTerritories.length ? `
-        <select id="targetTerr">${myTerritories.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} (${t.armies} ${troopWord(t.era, t.armies)})</option>`).join('')}</select>
-        <input type="text" id="amount" placeholder="${troopWord(state.era, 2)} a añadir (máx ${me.reserve})">
+        <select id="targetTerr">${myTerritories.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} (${t.armies} ${clsEraIcon(t.unitClass, t.era)})</option>`).join('')}</select>
+        <input type="text" id="amount" placeholder="Tropas a añadir (máx ${m.reserve})">
       ` : `<p class="muted">Aún no controlas ningún territorio.</p>`;
     } else if (type === 'espiar') {
       fields.innerHTML = `<select id="targetPlayer">${otherPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>`;
@@ -666,9 +665,16 @@ function renderOrders() {
     const targetSel = document.getElementById('targetTerr');
     if (targetSel && prevTargetTerr && [...targetSel.options].some(o => o.value === prevTargetTerr)) {
       targetSel.value = prevTargetTerr;
-      renderAttackFrom();
+      renderAttackDetails();
+      const modeSel = document.getElementById('attackMode');
+      if (modeSel && prevAttackMode && [...modeSel.options].some(o => o.value === prevAttackMode)) {
+        modeSel.value = prevAttackMode;
+        modeSel.onchange();
+      }
       const fromSel = document.getElementById('fromTerr');
       if (fromSel && prevFromTerr && [...fromSel.options].some(o => o.value === prevFromTerr)) fromSel.value = prevFromTerr;
+      const clsSel = document.getElementById('unitClassSel');
+      if (clsSel && prevUnitClass && [...clsSel.options].some(o => o.value === prevUnitClass)) clsSel.value = prevUnitClass;
     }
   } else if (typeNow === 'reforzar') {
     const targetSel = document.getElementById('targetTerr');
@@ -686,12 +692,26 @@ function renderOrders() {
     if (type === 'atacar') {
       const targetEl = document.getElementById('targetTerr');
       if (!targetEl) { showError('No tienes ningún objetivo alcanzable.'); return; }
-      const amountEl = document.getElementById('amount');
-      if (!amountEl) { showError('Elige un territorio de origen con legiones de sobra.'); return; }
       order.to = targetEl.value;
-      order.amount = parseInt(amountEl.value) || 0;
-      const fromEl = document.getElementById('fromTerr');
-      if (fromEl) order.from = fromEl.value;
+      const target = state.territories[order.to];
+      const isBootstrap = isBootstrapRound && target.era === state.era && !target.owner;
+      if (isBootstrap) {
+        order.mode = 'asalto';
+        const clsSel = document.getElementById('unitClassSel');
+        if (clsSel) order.unitClass = clsSel.value;
+        const amountEl = document.getElementById('amount');
+        order.amount = amountEl ? (parseInt(amountEl.value) || 0) : 0;
+      } else {
+        const modeSel = document.getElementById('attackMode');
+        const fromEl = document.getElementById('fromTerr');
+        if (!fromEl) { showError('Elige un territorio de origen con tropas de sobra.'); return; }
+        order.mode = modeSel ? modeSel.value : 'asalto';
+        order.from = fromEl.value;
+        if (order.mode === 'asalto') {
+          const amountEl = document.getElementById('amount');
+          order.amount = amountEl ? (parseInt(amountEl.value) || 0) : 0;
+        }
+      }
     } else if (type === 'reforzar') {
       if (!myTerritories.length) return;
       order.territoryId = document.getElementById('targetTerr').value;
@@ -705,7 +725,7 @@ function renderOrders() {
 
 function renderResolve() {
   const isHost = state.players[0] && state.players[0].id === myId;
-  const hasCombat = (state.resolveLog || []).some(l => l.includes('ataca') || l.includes('conquista'));
+  const hasCombat = (state.resolveLog || []).some(l => l.includes('ataca') || l.includes('conquista') || l.includes('asedia') || l.includes('incursión'));
   screen.innerHTML = `
     <div class="card">
       <h2>Resultado de la Ronda ${state.round}</h2>
@@ -713,10 +733,12 @@ function renderResolve() {
       <div class="log">${(state.resolveLog || []).map(l => `<div>${l}</div>`).join('')}</div>
     </div>
     ${renderBoard()}
+    ${renderVictoryPanel()}
     ${renderTroopPanel()}
+    ${renderWonderPanel()}
     ${isHost ? `<button id="cont">Continuar</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}
   `;
-  wireTroopPanel();
+  wirePanels();
   const btn = document.getElementById('cont');
   if (btn) btn.onclick = () => call('continue');
 }
@@ -769,9 +791,11 @@ function renderSimposio() {
 
 function renderFin() {
   const isHost = state.players[0] && state.players[0].id === myId;
+  const v = state.victory;
   screen.innerHTML = `
     <div class="card center">
       <h2>🏆 Fin de la partida</h2>
+      ${v ? `<p style="font-weight:700; line-height:1.45;">${v.detalle}</p>` : ''}
       ${state.finalResult.map((r, i) => `
         <div class="rank ${i === 0 ? 'first' : ''}">
           <span>${i === 0 ? '👑 ' : ''}${r.name}</span>
@@ -785,7 +809,10 @@ function renderFin() {
   if (btn) btn.onclick = () => call('restart_room');
 }
 
-const ERA_LABELS = { 1: 'Era I', 2: 'Era II', 3: 'Era III' };
+// ---------------------------------------------------------------------------
+// Paneles compartidos: tablero, vías de victoria, tropas/mejoras y maravillas
+// ---------------------------------------------------------------------------
+
 function renderBoard() {
   const eras = [1, 2, 3];
   const allTerrs = Object.values(state.territories);
@@ -795,98 +822,37 @@ function renderBoard() {
     ${eras.map(e => {
       const terrs = openTerrs.filter(t => t.era === e);
       if (!terrs.length) return '';
-      return `<div class="era-label">${ERA_LABELS[e]} · ${troopIcon(e)} ${troopWord(e, 2)}</div>
+      return `<div class="era-label">${ERA_LABELS[e]}</div>
       <div class="territories" style="margin-bottom:8px;">
         ${terrs.map(t => `
           <div class="territory" id="terr-${t.id}" style="border-color:${t.owner ? colorFor(t.owner) : '#4a3f5c'}">
-            <b>${t.icon || ''} ${t.name}</b><br>
-            <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'}${t.owner === myId ? ' · tuyo' : ''}</span><br>
-            ${unitBadge(e, t.armies)}
+            <b>${t.wonder ? t.wonder.icon + ' ' : ''}${t.icon || ''} ${t.name}</b><br>
+            <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'}${t.owner === myId ? ' · tuyo' : ''} · ${clsEraName(t.unitClass, t.era)}</span><br>
+            ${unitBadge(t)}
+            ${t.wonder ? `<div class="muted" style="margin-top:2px;">🏛️ ${t.wonder.name}</div>` : ''}
           </div>`).join('')}
       </div>`;
     }).join('')}
   </div>`;
 }
 
-// Hash simple y determinista (mismo id -> mismo número siempre) solo para dar un pequeño
-// desplazamiento vertical a cada nodo del mapa, así las filas no quedan perfectamente rectas.
+// Paleta de "terreno" para territorios SIN dueño — apagada y terrosa.
+const TERRAIN_PALETTE = ['#3d5a4a', '#4a4530', '#33465c', '#4a3d38', '#3f4a33', '#3a3550'];
 function hashStr(s) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 }
-
-// Paleta de "terreno" para territorios SIN dueño — apagada y terrosa, para que se note que no es
-// el color vivo de ningún jugador. Así el mapa se ve con color desde el primer turno (como un mapa
-// de verdad), no solo después de que alguien conquiste algo.
-const TERRAIN_PALETTE = ['#3d5a4a', '#4a4530', '#33465c', '#4a3d38', '#3f4a33', '#3a3550'];
 function terrainColor(id) { return TERRAIN_PALETTE[hashStr(id) % TERRAIN_PALETTE.length]; }
 
-// Mosaico de "tierra fraccionada" — SIN círculos ni nodos: cada celda de una rejilla se colorea
-// según el territorio más cercano (su color de terreno fijo si es neutral, el color de su dueño si
-// lo han conquistado, o un tono de niebla si su Era todavía no ha empezado), formando fragmentos
-// irregulares tipo mapa político. La frontera entre dos fragmentos distintos se traza siempre; si
-// uno de los dos lados es tuyo se traza en dorado, si uno de los dos lados es territorio que puedes
-// atacar se traza en rojo, y si cualquiera de los dos lados sigue en niebla se traza discreta — así
-// no hace falta ningún círculo para ver ni de quién es cada fragmento ni cuáles puedes conquistar.
-function renderTerritoryShading(pos, W, H, mine, threatened) {
-  const cell = 14;
-  const nodes = Object.values(pos);
-  if (!nodes.length) return '';
-  const cols = Math.ceil(W / cell), rows = Math.ceil(H / cell);
-  const zoneAt = [];
-  for (let ry = 0; ry < rows; ry++) {
-    const row = [];
-    for (let cx = 0; cx < cols; cx++) {
-      const px = cx * cell + cell / 2, py = ry * cell + cell / 2;
-      let best = nodes[0], bestDist = Infinity;
-      for (const n of nodes) {
-        const dx = n.x - px, dy = n.y - py;
-        const d = dx * dx + dy * dy;
-        if (d < bestDist) { bestDist = d; best = n; }
-      }
-      row.push(best.t);
-    }
-    zoneAt.push(row);
-  }
-  const edgeColor = (a, b) => {
-    if (!a.open || !b.open) return ['#0d0b12', 1, 0.55];
-    if (a.owner === myId || b.owner === myId) return ['var(--accent)', 2.2, 1];
-    if (threatened.has(a.id) || threatened.has(b.id)) return ['#ff6b6b', 1.8, 0.95];
-    return ['#171220', 1.1, 0.7];
-  };
-  let rects = '', borders = '';
-  for (let ry = 0; ry < rows; ry++) {
-    for (let cx = 0; cx < cols; cx++) {
-      const t = zoneAt[ry][cx];
-      const color = !t.open ? '#221f2b' : (t.owner ? colorFor(t.owner) : terrainColor(t.id));
-      const op = !t.open ? 0.55 : (t.owner ? 0.5 : 0.34);
-      const click = t.open ? `focusTerritory('${t.id}')` : `peekTerritory('${t.id}')`;
-      rects += `<rect class="zone-cell" data-terr="${t.id}" onclick="${click}" x="${cx * cell}" y="${ry * cell}" width="${cell + 0.6}" height="${cell + 0.6}" fill="${color}" opacity="${op}" />`;
-      if (cx < cols - 1 && zoneAt[ry][cx + 1].id !== t.id) {
-        const [stroke, w, op2] = edgeColor(t, zoneAt[ry][cx + 1]);
-        borders += `<line class="zone-border" x1="${(cx + 1) * cell}" y1="${ry * cell}" x2="${(cx + 1) * cell}" y2="${(ry + 1) * cell}" stroke="${stroke}" stroke-width="${w}" opacity="${op2}" />`;
-      }
-      if (ry < rows - 1 && zoneAt[ry + 1][cx].id !== t.id) {
-        const [stroke, w, op2] = edgeColor(t, zoneAt[ry + 1][cx]);
-        borders += `<line class="zone-border" x1="${cx * cell}" y1="${(ry + 1) * cell}" x2="${(cx + 1) * cell}" y2="${(ry + 1) * cell}" stroke="${stroke}" stroke-width="${w}" opacity="${op2}" />`;
-      }
-    }
-  }
-  return rects + borders;
-}
-
-// Mapa visual fraccionado — SIN círculos ni nodos de grafo: solo fragmentos de terreno coloreado,
-// usando las coordenadas (x,y) que ya vienen calculadas desde el servidor (mismo layout para todos
-// los jugadores, ver layoutTerritories en server.js). Se dibujan los 24 territorios de la partida
-// —no solo los de la Era actual— así desde el primer turno se ve el país completo: los que aún no
-// se han abierto se pintan como niebla con un candado, y se revelan con su terreno real al llegar
-// su Era, en vez de aparecer de la nada.
+// MAPA POLÍTICO: cada territorio llega del servidor como un polígono suave (t.path, un path
+// SVG ya calculado — su celda de Voronoi recortada a la masa de tierra). Aquí solo se pinta:
+// mar de fondo, una "sotabase" de tierra continua (el mismo polígono con borde gordo, que
+// funde las provincias en un único país con costa), el relleno de cada provincia (niebla si
+// su Era no ha empezado, terreno neutro, o el color del dueño) y las fronteras: doradas las
+// tuyas, rojas las que puedes atacar, finas y oscuras el resto.
 function renderMapSvg(allTerrs) {
   if (!allTerrs.length) return '';
-  const pos = {};
-  allTerrs.forEach(t => { pos[t.id] = { x: t.x, y: t.y, t }; });
-
   const mine = new Set(allTerrs.filter(t => t.open && t.owner === myId).map(t => t.id));
   const threatened = new Set();
   allTerrs.forEach(t => {
@@ -898,28 +864,47 @@ function renderMapSvg(allTerrs) {
     }
   });
 
+  const underlay = allTerrs.map(t =>
+    `<path d="${t.path}" fill="#3b3450" stroke="#3b3450" stroke-width="10" stroke-linejoin="round" />`).join('');
+
+  const fills = allTerrs.map(t => {
+    let fill, op;
+    if (!t.open) { fill = '#221f2b'; op = 0.92; }
+    else if (t.owner) { fill = colorFor(t.owner); op = 0.62; }
+    else { fill = terrainColor(t.id); op = 0.85; }
+    const click = t.open ? `focusTerritory('${t.id}')` : `peekTerritory('${t.id}')`;
+    return `<path class="terr-shape" data-terr="${t.id}" onclick="${click}" d="${t.path}" fill="${fill}" opacity="${op}" stroke="#171220" stroke-width="1.1" />`;
+  }).join('');
+
+  // Fronteras destacadas encima: rojas (atacables) primero, doradas (tuyas) al final.
+  const redBorders = allTerrs.filter(t => threatened.has(t.id)).map(t =>
+    `<path d="${t.path}" fill="none" stroke="#ff6b6b" stroke-width="1.8" opacity="0.95" style="pointer-events:none;" />`).join('');
+  const goldBorders = allTerrs.filter(t => mine.has(t.id)).map(t =>
+    `<path d="${t.path}" fill="none" stroke="var(--accent)" stroke-width="2.2" opacity="1" style="pointer-events:none;" />`).join('');
+
   const labels = allTerrs.map(t => {
-    const p = pos[t.id];
     if (!t.open) {
-      return `<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" font-size="11" opacity="0.6"
+      return `<text x="${t.x}" y="${t.y}" text-anchor="middle" dominant-baseline="central" font-size="11" opacity="0.6"
         paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">🔒</text>`;
     }
     return `
-    <text x="${p.x}" y="${p.y - 1}" text-anchor="middle" dominant-baseline="central" font-size="14"
-      paint-order="stroke" stroke="#171220" stroke-width="3" stroke-linejoin="round" style="pointer-events:none;">${t.icon || '📍'}</text>
-    <text x="${p.x}" y="${p.y + 15}" text-anchor="middle" font-size="9" fill="#fff"
-      paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">${t.armies}${troopIcon(t.era)}</text>`;
+    <text x="${t.x}" y="${t.y - 3}" text-anchor="middle" dominant-baseline="central" font-size="13"
+      paint-order="stroke" stroke="#171220" stroke-width="3" stroke-linejoin="round" style="pointer-events:none;">${t.wonder ? t.wonder.icon : (t.icon || '📍')}</text>
+    <text x="${t.x}" y="${t.y + 12}" text-anchor="middle" font-size="9" fill="#fff"
+      paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">${t.armies}${clsEraIcon(t.unitClass, t.era)}</text>`;
   }).join('');
 
   return `<svg class="map-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" style="width:100%; height:auto; display:block; margin-bottom:4px; border-radius:8px; overflow:hidden;">
-    <rect x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="#1b1622" />
-    ${renderTerritoryShading(pos, MAP_W, MAP_H, mine, threatened)}
+    <rect x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="#101624" />
+    ${underlay}
+    ${fills}
+    ${redBorders}
+    ${goldBorders}
     ${labels}
   </svg>
-  <div class="map-legend muted">Toca un fragmento para ver su ficha &nbsp; 🟡 dorado = tuyo &nbsp; 🔴 rojo = puedes atacarlo &nbsp; 🔒 = aún sin abrir</div>`;
+  <div class="map-legend muted">Toca una provincia para ver su ficha &nbsp; 🟡 dorado = tuya &nbsp; 🔴 rojo = puedes atacarla &nbsp; 🔒 = aún sin abrir &nbsp; El icono pequeño es su clase de guarnición.</div>`;
 }
 
-// Al tocar un nodo del mapa, resalta y hace scroll a su ficha detallada en la lista de abajo.
 function focusTerritory(id) {
   const el = document.getElementById('terr-' + id);
   if (!el) return;
@@ -928,12 +913,101 @@ function focusTerritory(id) {
   setTimeout(() => el.classList.remove('flash'), 900);
 }
 
-// Al tocar un territorio que todavía no se ha abierto, solo avisa de en qué Era aparecerá —
-// no hay ficha detallada que mostrar porque aún no existe como tal en la partida.
 function peekTerritory(id) {
   const t = state.territories[id];
   if (!t) return;
-  showError(`🔒 Territorio aún sin abrir — se revela al empezar la ${ERA_LABELS[t.era]}.`);
+  showError(`🔒 Provincia aún sin abrir — se revela al empezar la ${ERA_LABELS[t.era]}.`);
+}
+
+// Panel de VÍAS DE VICTORIA: el progreso de cada jugador hacia Dominación (territorios),
+// Cultura (maravillas) y Gloria — para que siempre se sepa quién va ganando y por dónde.
+function renderVictoryPanel() {
+  if (!state.players.length) return '';
+  const wondersBy = {};
+  Object.values(state.territories).forEach(t => {
+    if (t.wonder && t.owner) wondersBy[t.owner] = (wondersBy[t.owner] || 0) + 1;
+  });
+  return `<div class="card">
+    <h2>🏆 Vías de victoria</h2>
+    ${state.players.map((p, i) => {
+      const terrs = Object.values(state.territories).filter(t => t.open && t.owner === p.id).length;
+      return `<div class="victory-row">
+        <span class="dot" style="background:${PLAYER_COLORS_RAW[i]}"></span>
+        <span class="vname">${p.name}${p.id === myId ? ' (tú)' : ''}</span>
+        <span class="vstat">🗺️ ${terrs}/${state.dominationNeeded}</span>
+        <span class="vstat">🏛️ ${wondersBy[p.id] || 0}/${state.wondersToWin}</span>
+        <span class="vstat">🏆 ${p.gloria}</span>
+      </div>`;
+    }).join('')}
+    <p class="muted victory-note">🗺️ Dominación: controla ${state.dominationNeeded} territorios abiertos y ganas al instante. &nbsp; 🏛️ Cultura: controla ${state.wondersToWin} Maravillas y ganas al instante. &nbsp; 🏆 Gloria: si nadie ha ganado antes, decide al final de la Era III.</p>
+  </div>`;
+}
+
+// Panel de tropas y mejoras: las 3 clases, qué vence a qué, y la escalera de niveles de cada una.
+// Subir de nivel no consume tu orden de la ronda y vale PARA SIEMPRE (todas tus tropas de esa
+// clase, en todas las Épocas). Sun Tzu paga 2 Recursos menos.
+function renderTroopPanel() {
+  const m = me();
+  if (!m) return '';
+  const myResources = m.resources || 0;
+  return `<div class="card">
+    <h2>⚔️ Tus tropas y mejoras</h2>
+    <p class="muted" style="margin-bottom:10px;">Tienes <b style="color:var(--accent)">${myResources} 💰 Recursos</b> (1 por territorio controlado al final de cada ronda). La rueda de ventajas: 🛡️ Infantería vence a 🐎 Caballería, que vence a 🏹 A distancia, que vence a Infantería (+1 dado). Mejorar una clase es para siempre y no gasta tu orden.</p>
+    ${CLASS_KEYS.map(k => {
+      const c = clsDef(k);
+      const curLevel = (m.troopLevels && m.troopLevels[k]) || 1;
+      const nextDef = c.levels.find(l => l.level === curLevel + 1);
+      const eraNames = [1, 2, 3].map(e => `${ERA_LABELS[e]}: ${c.byEra[e].icon} ${c.byEra[e].name}`).join(' · ');
+      return `
+        <div class="troop-tier">
+          <div class="troop-tier-head">
+            <span class="portrait" style="border-color:var(--accent)">${clsEraIcon(k, state.era)}</span>
+            <span><b>${c.clase}</b><br><span class="muted" style="font-size:0.7rem;">${eraNames}</span></span>
+          </div>
+          <div class="tactica">💡 ${c.tacticaDesc}</div>
+          <div class="level-ladder">
+            ${c.levels.map(l => {
+              const status = l.level < curLevel ? '✅' : l.level === curLevel ? '👉' : '🔒';
+              const cls2 = l.level === curLevel ? 'level-current' : '';
+              const shownCost = l.cost ? myLevelCost(l.cost) : 0;
+              return `<div class="level-row ${cls2}">
+                <div class="level-row-title">${status} Nivel ${l.level} — ${l.name}${l.cost ? ` <span class="muted">(coste ${shownCost} 💰${m.leader === 'suntzu' ? ', con descuento de Sun Tzu' : ''})</span>` : ' <span class="muted">(inicial)</span>'}</div>
+                <div class="level-row-desc muted">${l.desc}</div>
+              </div>`;
+            }).join('')}
+          </div>
+          ${nextDef ? `<button class="secondary level-up-btn" data-cls="${k}" ${myResources < myLevelCost(nextDef.cost) ? 'disabled' : ''}>⬆️ Mejorar a "${nextDef.name}" (${myLevelCost(nextDef.cost)} 💰)${myResources < myLevelCost(nextDef.cost) ? ` — te faltan ${myLevelCost(nextDef.cost) - myResources}` : ''}</button>` : `<p class="muted center" style="margin-bottom:4px;">Nivel máximo alcanzado.</p>`}
+        </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// Panel de Maravillas: construir una (si tienes territorio libre de maravilla y Recursos).
+function renderWonderPanel() {
+  const m = me();
+  if (!m) return '';
+  const candidates = Object.values(state.territories).filter(t => t.open && t.owner === myId && !t.wonder);
+  const myWonders = Object.values(state.territories).filter(t => t.wonder && t.owner === myId);
+  return `<div class="card">
+    <h2>🏛️ Maravillas</h2>
+    <p class="muted" style="margin-bottom:8px;">Cuestan ${state.wonderCost} 💰 y se construyen en un territorio tuyo (una por territorio), sin gastar tu orden. ¡Ojo: si te conquistan el territorio, la Maravilla cambia de dueño! Controlar ${state.wondersToWin} a la vez = victoria por Cultura.</p>
+    ${myWonders.length ? `<p class="muted">Tuyas ahora mismo: ${myWonders.map(t => `${t.wonder.icon} ${t.wonder.name} (en ${t.name})`).join(' · ')}</p>` : ''}
+    ${candidates.length ? `
+      <select id="wonderTerr">${candidates.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name}</option>`).join('')}</select>
+      <button class="secondary" id="buildWonderBtn" ${(m.resources || 0) < state.wonderCost ? 'disabled' : ''}>🏛️ Construir Maravilla (${state.wonderCost} 💰)${(m.resources || 0) < state.wonderCost ? ` — te faltan ${state.wonderCost - (m.resources || 0)}` : ''}</button>
+    ` : `<p class="muted">Necesitas controlar un territorio sin Maravilla para poder construir.</p>`}
+  </div>`;
+}
+
+function wirePanels() {
+  document.querySelectorAll('.level-up-btn').forEach(btn => {
+    btn.onclick = () => call('level_up_troop', { cls: btn.dataset.cls });
+  });
+  const wBtn = document.getElementById('buildWonderBtn');
+  if (wBtn) wBtn.onclick = () => {
+    const sel = document.getElementById('wonderTerr');
+    if (sel) call('construir_maravilla', { territoryId: sel.value });
+  };
 }
 
 render();
