@@ -426,7 +426,7 @@ function renderLobby() {
         🗺️ <b style="color:var(--text)">Mapa:</b> un continente nuevo cada partida — penínsulas, islas y rutas marítimas. La Era I empieza en el sur; el norte se abre con las Eras II y III (5 rondas por Era).<br>
         ⚔️ <b style="color:var(--text)">Tropas:</b> Infantería vence a Caballería, que vence a A distancia, que vence a Infantería (+1 dado).<br>
         🎯 <b style="color:var(--text)">8 órdenes:</b> Asalto, Asedio, Incursión, Reforzar, Levas, Matrimonio 💍, Personaje y Espiar.<br>
-        🏆 <b style="color:var(--text)">Ganar:</b> Dominación (mayoría del mapa), Cultura (3 Maravillas) o Gloria (fin de la Era III).
+        🏆 <b style="color:var(--text)">Ganar:</b> cada casa empieza con un territorio aleatorio — gana quien <b style="color:var(--text)">conquiste el mapa entero</b>. Si nadie lo logra, al final de la Era III gana quien más territorio controle (las Maravillas 🏛️ valen doble; la Gloria desempata).
       </p>
     </div>
     <div class="card">
@@ -765,7 +765,7 @@ function renderBoard() {
     `<span class="rd ${state.round && i < state.round ? 'done' : ''}"></span>`).join('');
   return `<div class="card" style="padding:8px;">
     <div class="hud" style="margin-bottom:6px; padding:4px 8px;">
-      <div class="res"><span>💰 <b>${m ? m.resources || 0 : 0}</b></span><span>🏛️ <b>${myWonders}</b>/${state.wondersToWin}</span><span>🏆 <b>${m ? m.gloria : 0}</b></span></div>
+      <div class="res"><span>💰 <b>${m ? m.resources || 0 : 0}</b></span><span>🏛️ <b>${myWonders}</b></span><span>🏆 <b>${m ? m.gloria : 0}</b></span></div>
       <div class="roundTrack"><span class="lab">${ERA_LABELS[state.era]}</span>${dots}</div>
     </div>
     <div class="mapFrame">${renderMapSvg(allTerrs)}</div>
@@ -1242,15 +1242,16 @@ function renderVictoryPanel() {
     <h2>🏆 Vías de victoria</h2>
     ${state.players.map((p, i) => {
       const terrs = Object.values(state.territories).filter(t => t.open && t.owner === p.id).length;
+      const score = terrs + (wondersBy[p.id] || 0);
       return `<div class="victory-row">
         <span class="dot" style="background:${PLAYER_COLORS_RAW[i]}"></span>
         <span class="vname">${p.name}${p.id === myId ? ' (tú)' : ''}${p.married ? ' 💍' : ''}</span>
         <span class="vstat">🗺️ ${terrs}/${state.dominationNeeded}</span>
-        <span class="vstat">🏛️ ${wondersBy[p.id] || 0}/${state.wondersToWin}</span>
-        <span class="vstat">🏆 ${p.gloria}</span>
+        <span class="vstat">🏛️ ${wondersBy[p.id] || 0}</span>
+        <span class="vstat" title="puntuación de conquista">⚑ ${score}</span>
       </div>`;
     }).join('')}
-    <p class="muted victory-note">🗺️ Dominación: ${state.dominationNeeded} territorios = victoria instantánea · 🏛️ Cultura: ${state.wondersToWin} Maravillas = victoria instantánea · 🏆 Gloria: decide al final de la Era III.</p>
+    <p class="muted victory-note">🗺️ Conquista el mapa entero (los ${state.dominationNeeded} territorios abiertos) = victoria instantánea · 🏛️ cada Maravilla vale +1 en tu puntuación ⚑ de conquista · si nadie conquista el mapa, al final de la Era III gana la puntuación ⚑ más alta (🏆 Gloria desempata).</p>
   </div>`;
 }
 
@@ -1296,7 +1297,7 @@ function renderWonderPanel() {
   const myWonders = Object.values(state.territories).filter(t => t.wonder && t.owner === myId);
   return `<div class="card">
     <h2>🏛️ Maravillas</h2>
-    <p class="muted" style="margin-bottom:8px;">Cuestan ${state.wonderCost} 💰, en territorio tuyo (una por territorio), sin gastar tu orden. ¡Si te conquistan el territorio, la Maravilla cambia de dueño! ${state.wondersToWin} a la vez = victoria por Cultura.</p>
+    <p class="muted" style="margin-bottom:8px;">Cuestan ${state.wonderCost} 💰, en territorio tuyo (una por territorio), sin gastar tu orden. La provincia con Maravilla vale <b style="color:var(--gold)">doble</b> en el recuento final del mapa — ¡y si te la conquistan, la Maravilla cambia de dueño!</p>
     ${myWonders.length ? `<p class="muted">Tuyas: ${myWonders.map(t => `${t.wonder.icon} ${t.wonder.name} (${t.name})`).join(' · ')}</p>` : ''}
     ${candidates.length ? `
       <select id="wonderTerr">${candidates.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name}</option>`).join('')}</select>
