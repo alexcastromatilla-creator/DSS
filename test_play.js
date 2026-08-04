@@ -141,9 +141,15 @@ async function run() {
           const mr = Math.random();
           const mode = mr < 0.5 ? 'asalto' : mr < 0.8 ? 'asedio' : 'incursion';
           order = { type: 'atacar', mode, to: pick.target.id, from: pick.src.id, amount };
-        } else if (roll < 0.8 && mine.length) {
+        } else if (roll < 0.72 && mine.length) {
           order = { type: 'reforzar', territoryId: mine[Math.floor(Math.random() * mine.length)].id, amount: 1 };
-        } else if (roll < 0.9) {
+        } else if (roll < 0.8) {
+          order = { type: 'levas' }; // puede fallar por fondos: cubre ambos caminos
+        } else if (roll < 0.86) {
+          const meP = p.state.players.find(pp => pp.id === p.id);
+          const single = p.state.players.find(pp => pp.id !== p.id && !pp.married);
+          order = (!meP.married && single) ? { type: 'matrimonio', targetId: single.id } : { type: 'reclutar' };
+        } else if (roll < 0.93) {
           order = { type: 'reclutar' };
         } else {
           const other = p.state.players.find((pp) => pp.id !== p.id);
@@ -160,6 +166,10 @@ async function run() {
         }
         if (Math.random() < 0.2 && mine.length) {
           await apiPost('construir_maravilla', { playerId: p.id, territoryId: mine[0].id });
+        }
+        // Propuestas de boda pendientes: responder (mitad sí, mitad no) sin gastar orden.
+        if (p.state.you && p.state.you.proposal) {
+          await apiPost('respond_marriage', { playerId: p.id, accept: Math.random() < 0.5 });
         }
       }
     } else if (phase === 'resolve' || phase === 'simposio') {

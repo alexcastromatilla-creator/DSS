@@ -59,10 +59,7 @@ const BASE = 'http://127.0.0.1:3000';
   await page.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Era I')), { timeout: 8000 });
   console.log('era_intro visible.');
 
-  const monumentSvg = await page.$('#monumentBg svg');
-  console.log('Monumento de fondo (dibujo vectorial, con ilustración real como upgrade opcional):', !!monumentSvg);
-  if (!monumentSvg) throw new Error('No se encontró el monumento de fondo de la Era');
-
+  // (El monumento de fondo se retiró en la estética v6: el mapa continental lleva el peso visual.)
   const restartBtn = await page.$('#restartBtn');
   const exitBtn = await page.$('#exitBtn');
   console.log('Barra de sala — Reiniciar (anfitrión):', !!restartBtn, '| Salir:', !!exitBtn);
@@ -75,8 +72,14 @@ const BASE = 'http://127.0.0.1:3000';
   await page.click('#cont');
 
   console.log('--- Ya no hay trivia: debe ir directo a la pantalla de órdenes ---');
-  await page.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Tus órdenes')), { timeout: 8000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Tu orden')), { timeout: 8000 });
   console.log('Pantalla de órdenes visible directamente (sin trivia).');
+
+  console.log('--- Rejilla de 8 órdenes (incluye Matrimonio y Levas) ---');
+  const ordKeys = await page.$$eval('.ord[data-ord]', els => els.map(e => e.dataset.ord));
+  console.log('Órdenes:', ordKeys.join(', '));
+  if (ordKeys.length !== 8) throw new Error('FALLO: deberían verse 8 órdenes, hay ' + ordKeys.length);
+  if (!ordKeys.includes('matrimonio') || !ordKeys.includes('levas')) throw new Error('FALLO: faltan Matrimonio o Levas en la rejilla');
   const hasBoard = await page.$('.territories');
   if (!hasBoard) throw new Error('El tablero no se muestra en la pantalla de órdenes');
   console.log('Tablero visible junto al formulario de órdenes.');
@@ -112,27 +115,29 @@ const BASE = 'http://127.0.0.1:3000';
   console.log('Fichas que muestran el nombre histórico de su clase de guarnición:', classInCards, '/ 8');
   if (classInCards !== 8) throw new Error('FALLO: las fichas de territorio deberían indicar su clase de guarnición de Era I');
 
-  console.log('--- Comprobando el mapa político (24 provincias con polígonos suaves, niebla, sin cuadrícula) ---');
-  const circleCount = await page.$$eval('svg.map-svg circle', els => els.length);
-  console.log('Círculos en el mapa (debe ser 0):', circleCount);
-  if (circleCount) throw new Error('El mapa todavía dibuja círculos, y ya no deberían estar');
-  const rectCount = await page.$$eval('svg.map-svg rect', els => els.length);
-  console.log('Rectángulos en el mapa (debe ser 1, solo el mar de fondo):', rectCount);
-  if (rectCount !== 1) throw new Error('El mapa sigue cuadriculado: hay ' + rectCount + ' rects y solo debería estar el mar de fondo');
+  console.log('--- Comprobando el mapa continental (24 provincias, relieve, niebla, rutas marítimas) ---');
+  // Solo los hijos DIRECTOS del svg: los fondos/overlays. (Las figuras de las unidades llevan
+  // sus propios rects — carcajs, escudos — anidados en <g>, y no cuentan como "cuadrícula".)
+  const rectCount = await page.$$eval('svg.map-svg > rect', els => els.length);
+  console.log('Rects de fondo/overlay (esperado 5: mar + textura + luz + grano + viñeta):', rectCount);
+  if (rectCount !== 5) throw new Error('FALLO: hay ' + rectCount + ' rects de fondo (¿ha vuelto la cuadrícula?)');
   const territoryCardIds = await page.$$eval('.territory', els => els.map(e => e.id.replace('terr-', '')));
   const shapeIdList = await page.$$eval('.terr-shape', els => [...new Set(els.map(e => e.dataset.terr))]);
-  console.log('Provincias con polígono en el mapa:', shapeIdList.length, '(esperado 24, el país entero) | Territorios con ficha (abiertos en Era I):', territoryCardIds.length, '(esperado 8)');
-  if (shapeIdList.length !== 24) throw new Error('FALLO: el mapa debería pintar las 24 provincias (abiertas + en niebla), pinta ' + shapeIdList.length);
-  if (territoryCardIds.length !== 8) throw new Error('FALLO: se esperaban 8 territorios con ficha detallada (Era I), hay ' + territoryCardIds.length);
-  if (!territoryCardIds.every((id) => shapeIdList.includes(id))) throw new Error('FALLO: algún territorio abierto (con ficha) no aparece pintado en el mapa');
+  console.log('Provincias con polígono:', shapeIdList.length, '(esperado 24) | Fichas Era I:', territoryCardIds.length, '(esperado 8)');
+  if (shapeIdList.length !== 24) throw new Error('FALLO: el mapa debería pintar las 24 provincias, pinta ' + shapeIdList.length);
+  if (territoryCardIds.length !== 8) throw new Error('FALLO: se esperaban 8 fichas de la Era I, hay ' + territoryCardIds.length);
+  if (!territoryCardIds.every((id) => shapeIdList.includes(id))) throw new Error('FALLO: algún territorio abierto no aparece en el mapa');
   const pathCount = await page.$$eval('svg.map-svg path', els => els.length);
-  console.log('Paths SVG en el mapa (sotabase + rellenos + fronteras destacadas):', pathCount);
-  if (pathCount < 48) throw new Error('El mapa no pinta los polígonos esperados (al menos sotabase + relleno por provincia)');
+  console.log('Paths SVG en el mapa (costa por capas + terreno + fronteras + doodads):', pathCount);
+  if (pathCount < 120) throw new Error('El mapa no pinta las capas de relieve esperadas (' + pathCount + ' paths)');
+  const seaRouteCount = await page.$$eval('svg.map-svg line[stroke-dasharray]', els => els.length);
+  console.log('Rutas marítimas dibujadas (discontinuas):', seaRouteCount);
+  if (seaRouteCount < 1) throw new Error('FALLO: no se dibuja ninguna ruta marítima (el mapa continental siempre genera alguna)');
   const legend = await page.$('.map-legend');
   if (!legend) throw new Error('Falta la leyenda del mapa');
-  const lockedCount = await page.$$eval('svg.map-svg text', els => els.filter(e => e.textContent.includes('🔒')).length);
-  console.log('Provincias en niebla (con candado):', lockedCount, '(esperado 16 = 24 - 8 abiertas)');
-  if (lockedCount !== 16) throw new Error('FALLO: se esperaban 16 provincias en niebla en Era I, hay ' + lockedCount);
+  const fogCount = await page.$$eval('svg.map-svg text', els => els.filter(e => e.textContent.includes('☁️')).length);
+  console.log('Provincias en niebla (con nube):', fogCount, '(esperado 16 = 24 - 8 abiertas)');
+  if (fogCount !== 16) throw new Error('FALLO: se esperaban 16 provincias en niebla en Era I, hay ' + fogCount);
 
   console.log('--- Tocando una provincia del mapa: debe resaltar su ficha en la lista ---');
   // OJO: hay que tocar una provincia ABIERTA (las de niebla solo muestran un aviso), y hacerlo
@@ -142,32 +147,31 @@ const BASE = 'http://127.0.0.1:3000';
   if (!flashed) throw new Error('Tocar una provincia del mapa no resalta su territorio correspondiente en la lista');
   console.log('OK: tocar una provincia del mapa resalta su ficha en la lista de abajo.');
 
-  console.log('--- Comprobando que el temporizador NO resetea el formulario cada segundo (bug reportado) ---');
-  await page.selectOption('#orderType', 'atacar');
+  console.log('--- Comprobando que el formulario no se resetea mientras eliges (bug histórico) ---');
+  await page.click('.ord[data-ord="atacar_asalto"]');
   await page.waitForTimeout(300);
   const targetSelectExisted = await page.$('#targetTerr');
   if (targetSelectExisted) {
-    // Elegimos una opción concreta y comprobamos que sigue ahí 2.5s después (2 ticks del reloj).
     const options = await page.$$eval('#targetTerr option', els => els.map(e => e.value));
     if (options.length) {
       await page.selectOption('#targetTerr', options[options.length - 1]);
       const before = await page.$eval('#targetTerr', el => el.value);
       await page.waitForTimeout(2500);
-      const stillOrderType = await page.$eval('#orderType', el => el.value);
+      const stillOrd = await page.$eval('.ord.sel', el => el.dataset.ord);
       const stillTarget = await page.$eval('#targetTerr', el => el.value);
-      console.log('orderType antes/después:', 'atacar', '/', stillOrderType, '| targetTerr antes/después:', before, '/', stillTarget);
-      if (stillOrderType !== 'atacar' || stillTarget !== before) throw new Error('El formulario de órdenes se resetea con el temporizador (bug NO arreglado)');
-      console.log('El formulario conserva la selección mientras corre el reloj: bug arreglado.');
+      console.log('orden antes/después:', 'atacar_asalto', '/', stillOrd, '| targetTerr antes/después:', before, '/', stillTarget);
+      if (stillOrd !== 'atacar_asalto' || stillTarget !== before) throw new Error('El formulario de órdenes se resetea solo (bug NO arreglado)');
+      console.log('El formulario conserva la selección: bug sigue arreglado.');
     }
   } else {
     console.log('(No había objetivos atacables en el primer turno, se omite la comprobación de selección persistente)');
   }
 
-  await page.selectOption('#orderType', 'reclutar');
+  await page.click('.ord[data-ord="reclutar"]');
   await page.click('#sendOrder');
 
   console.log('--- Esperando a que los bots envíen sus órdenes y se resuelva la ronda ---');
-  await page.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Resultado de la Ronda')), { timeout: 20000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Registro de la Ronda')), { timeout: 20000 });
   const resolveText = await page.$eval('.log', el => el.textContent);
   console.log('Resolución de la ronda 1 (con bots actuando solos):', resolveText.slice(0, 400));
 

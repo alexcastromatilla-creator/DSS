@@ -57,9 +57,13 @@ const BASE = 'http://127.0.0.1:3000';
   await p1.click('#cont');
 
   for (const p of pages) {
-    await p.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Tus órdenes')), { timeout: 8000 });
+    await p.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Tu orden')), { timeout: 8000 });
   }
   console.log('Los 3 ven la pantalla de órdenes directamente (sin trivia).');
+
+  const ordCount = await p1.$$eval('.ord[data-ord]', els => els.length);
+  console.log('Órdenes disponibles en la rejilla:', ordCount, '(esperado 8)');
+  if (ordCount !== 8) throw new Error('FALLO: deberían verse 8 órdenes en la rejilla');
 
   await p1.waitForTimeout(500);
 
@@ -73,11 +77,11 @@ const BASE = 'http://127.0.0.1:3000';
   console.log('errores de consola hasta ahora:', consoleErrors);
 
   for (const p of pages) {
-    await p.selectOption('#orderType', 'reclutar');
+    await p.click('.ord[data-ord="reclutar"]');
     await p.click('#sendOrder');
   }
 
-  await p1.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Resultado de la Ronda')), { timeout: 8000 });
+  await p1.waitForFunction(() => [...document.querySelectorAll('#screen h2')].some(h => h.textContent.includes('Registro de la Ronda')), { timeout: 8000 });
   const resolveText = await p1.$eval('.log', (el) => el.textContent);
   console.log('Resolución de la ronda 1 (host):', resolveText);
 

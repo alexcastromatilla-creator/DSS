@@ -103,7 +103,9 @@ async function run() {
   if (!levelsReset) throw new Error('FALLO: los niveles de clase no se resetearon a 1: ' + JSON.stringify(hostAfterReset.troopLevels));
   const noWonders = Object.values(host.state.territories).every(t => !t.wonder);
   if (!noWonders) throw new Error('FALLO: el mapa nuevo trae Maravillas ya construidas');
-  console.log('OK: Recursos (0), niveles por clase (inf/cab/arq:1) y mapa sin Maravillas tras reiniciar.');
+  const noMarriages = host.state.players.every(p => !p.married);
+  if (!noMarriages) throw new Error('FALLO: los matrimonios no se anularon al reiniciar');
+  console.log('OK: Recursos (0), niveles por clase, matrimonios anulados y mapa sin Maravillas tras reiniciar.');
 
   const playersAfter = host.state.players.map(p => `${p.name}(${p.leader})`);
   console.log('Jugadores conservados:', playersAfter);

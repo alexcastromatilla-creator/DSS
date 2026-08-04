@@ -228,13 +228,14 @@ const CHARACTER_DECKS = {
   ],
 };
 
-// Desafíos: se dispara 1 por Era (tras la 2ª ronda). Se cicla por tipo.
+// Desafíos: ahora saltan 2 por Era (tras la 2ª y la 4ª ronda) — 6 por partida, así que hay
+// 6 desafíos distintos (2 por cada motor: elección secreta, riesgo y votación) y no se repiten.
 const DESAFIOS = [
   {
     id: 'prisionero',
     tipo: 'eleccion_secreta',
     titulo: 'El Dilema del Prisionero Espartano',
-    texto: 'En secreto, elige Lealtad o Traición respecto a la alianza. Si los tres sois leales, todos ganáis 1 Gloria y nadie bebe. Si hay algún traidor, cada traidor gana 2 Gloria y cada leal bebe 1 sorbo.',
+    texto: 'En secreto, elige Lealtad o Traición respecto a la alianza. Si todos sois leales, todos ganáis 1 Gloria y nadie bebe. Si hay algún traidor, cada traidor gana 2 Gloria y cada leal bebe 1 sorbo.',
     opciones: ['Lealtad', 'Traición'],
   },
   {
@@ -249,6 +250,27 @@ const DESAFIOS = [
     tipo: 'votacion',
     titulo: 'El Debate de Atenas',
     texto: '¿Es más justo un rey sabio o una asamblea de ciudadanos? Defended vuestra postura en voz alta 30 segundos cada uno y votad quién ha argumentado mejor (no podéis votaros a vosotros mismos).',
+    opciones: [],
+  },
+  {
+    id: 'banquete',
+    tipo: 'eleccion_secreta',
+    titulo: 'El Banquete Envenenado',
+    texto: 'Corre el rumor de que una copa está envenenada. En secreto: ¿Bebes con honor o finges beber? Si todos bebéis con honor, +1 Gloria a cada uno. Si alguien finge, los que fingen ganan 2 Gloria y cada uno con honor bebe 1 sorbo (de la copa sospechosa, además).',
+    opciones: ['Beber con honor', 'Fingir que bebes'],
+  },
+  {
+    id: 'rubicon',
+    tipo: 'riesgo',
+    titulo: 'El Paso del Rubicón',
+    texto: '"La suerte está echada"... ¿o no? Cruzar el río con tu ejército es alto riesgo: si sale bien (dado 4+), ganas 3 Gloria; si sale mal, pierdes 1 tropa y bebes 2 sorbos. Quedarte en la orilla es seguro: +1 Gloria.',
+    opciones: ['Cruzar el Rubicón (riesgo)', 'Quedarse en la orilla (seguro)'],
+  },
+  {
+    id: 'juicio',
+    tipo: 'votacion',
+    titulo: 'El Juicio de Paris',
+    texto: 'Como Paris con la manzana de oro: cada uno defiende en voz alta, 30 segundos, por qué su imperio es el más digno de la manzana. Votad al mejor discurso (no podéis votaros a vosotros mismos).',
     opciones: [],
   },
 ];
