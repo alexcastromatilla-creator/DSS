@@ -776,7 +776,7 @@ function renderBoard() {
       return `<div class="era-label">${ERA_LABELS[e]}</div>
       <div class="territories" style="margin-bottom:8px;">
         ${terrs.map(t => `
-          <div class="territory" id="terr-${t.id}" style="border-color:${t.owner ? colorFor(t.owner) : '#3a3550'}">
+          <div class="territory" id="terr-${t.id}" style="border-color:${t.owner === myId ? 'var(--gold)' : (t.owner ? colorFor(t.owner) : '#3a3550')}">
             <b>${t.wonder ? t.wonder.icon + ' ' : ''}${t.icon || ''} ${t.name}</b><br>
             <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'}${t.owner === myId ? ' · tuyo' : ''} · ${clsEraName(t.unitClass, t.era)}</span><br>
             ${unitBadge(t)}
@@ -1020,8 +1020,14 @@ function renderMapSvg(allTerrs) {
   out += '<g style="pointer-events:none">';
   for (const t of allTerrs) {
     if (!t.owner || !t.open) continue;
+    const isMine = t.owner === myId;
     const c = colorFor(t.owner);
-    out += `<path d="${t.path}" fill="none" stroke="${c}" stroke-width="3" opacity="0.95"/><path d="${t.path}" fill="${c}" opacity="0.10"/>`;
+    // Lo TUYO se ve siempre con borde DORADO brillante (como promete la leyenda), con el
+    // tinte de tu color por dentro; lo de los demás, con el borde de su color de jugador.
+    const stroke = isMine ? '#f4dc9a' : c;
+    out += `<path d="${t.path}" fill="none" stroke="${stroke}" stroke-width="${isMine ? 3.8 : 3}" opacity="0.98"/>
+            ${isMine ? `<path d="${t.path}" fill="none" stroke="#8a6c2f" stroke-width="6" opacity="0.35"/>` : ''}
+            <path d="${t.path}" fill="${c}" opacity="0.10"/>`;
   }
   out += '</g>';
   for (const t of allTerrs) {
