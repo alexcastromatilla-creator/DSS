@@ -522,7 +522,9 @@ function ownedWonders(room, playerId) {
   return Object.values(room.territories).filter((t) => t.wonder && t.owner === playerId);
 }
 function openCount(room) { return Object.values(room.territories).filter((t) => t.open).length; }
-function dominationNeeded(room) { return Math.ceil(openCount(room) * DOMINATION_RATIO); }
+// Para conquistar el mapa hace falta TODO lo abierto (el nombre se mantiene por compatibilidad
+// con el cliente; DOMINATION_RATIO ya no se usa).
+function dominationNeeded(room) { return openCount(room); }
 function publicPlayer(p) {
   return {
     id: p.id, name: p.name, leader: p.leader, gloria: p.gloria, reserve: p.reserve,
@@ -617,28 +619,32 @@ function endGame(room, winnerId, type) {
   clearTimeout(room.timer);
   room.phase = 'fin';
   const winner = playerById(room, winnerId);
-  const rest = room.players.filter((p) => p.id !== winnerId).sort((a, b) => b.gloria - a.gloria);
-  const ranking = winner ? [winner, ...rest] : [...room.players].sort((a, b) => b.gloria - a.gloria);
+  const rest = room.players.filter((p) => p.id !== winnerId)
+    .sort((a, b) => conquestScore(room, b) - conquestScore(room, a) || b.gloria - a.gloria);
+  const ranking = winner ? [winner, ...rest] : [...room.players].sort((a, b) => conquestScore(room, b) - conquestScore(room, a) || b.gloria - a.gloria);
   room.finalResult = ranking.map((p) => ({ name: p.name, gloria: p.gloria, territorios: ownedTerritories(room, p.id).length }));
   const labels = {
-    dominacion: `🗺️ Victoria por DOMINACIÓN: ${winner ? winner.name : '?'} controla ${dominationNeeded(room)} o más territorios.`,
-    cultura: `🏛️ Victoria por CULTURA: ${winner ? winner.name : '?'} controla ${WONDERS_TO_WIN} Maravillas.`,
-    gloria: `🏆 Victoria por GLORIA: ${winner ? winner.name : '?'} termina la Era III con más Gloria.`,
+    conquista: `🗺️ ¡VICTORIA POR CONQUISTA! ${winner ? winner.name : '?'} controla todos los territorios del mapa.`,
+    territorios: `🏆 Nadie conquistó el mapa entero: gana ${winner ? winner.name : '?'}, que es quien más territorio controla al final de la Era III (las Maravillas cuentan doble; la Gloria desempata).`,
   };
   room.victory = { type, winner: winner ? winner.name : null, detalle: labels[type] || '' };
   room.phaseEndsAt = null;
   emitRoom(room);
 }
 
+// Victoria instantánea: conquistar el MAPA ENTERO (todos los territorios abiertos).
 function checkInstantVictory(room) {
-  const needed = dominationNeeded(room);
+  const total = openCount(room);
+  if (!total) return null;
   for (const p of room.players) {
-    if (ownedTerritories(room, p.id).filter((t) => t.open).length >= needed) return { winnerId: p.id, type: 'dominacion' };
-  }
-  for (const p of room.players) {
-    if (ownedWonders(room, p.id).length >= WONDERS_TO_WIN) return { winnerId: p.id, type: 'cultura' };
+    if (ownedTerritories(room, p.id).filter((t) => t.open).length >= total) return { winnerId: p.id, type: 'conquista' };
   }
   return null;
+}
+// Puntuación de conquista para el final de partida: territorios + Maravillas (valen doble
+// la provincia que las alberga: 1 por el territorio + 1 extra por la Maravilla).
+function conquestScore(room, p) {
+  return ownedTerritories(room, p.id).filter((t) => t.open).length + ownedWonders(room, p.id).length;
 }
 
 // ---------- máquina de fases ----------
@@ -653,6 +659,17 @@ function runStep(room) {
     openEraTerritories(room, room.era);
     room.eraDeckTaken = new Set();
     for (const p of room.players) p.reserve = (p.reserve || 0) + 3;
+    // Al empezar la partida, cada casa recibe un territorio inicial ALEATORIO de la Era I
+    // con una guarnición propia — desde el primer minuto tienes hogar que defender y
+    // frontera desde la que atacar. El objetivo: conquistar el mapa entero.
+    if (room.era === 1) {
+      const openList = shuffle(Object.values(room.territories).filter((t) => t.era === 1));
+      room.players.forEach((p, i) => {
+        const t = openList[i];
+        if (t) { t.owner = p.id; t.armies = 3; }
+      });
+      log(room, '🏰 Cada casa comienza con un territorio propio. ¡Gana quien conquiste el mapa!');
+    }
     log(room, `Comienza la ${ERA_INFO[room.era].titulo}`);
     room.phaseEndsAt = null;
     emitRoom(room);
@@ -709,11 +726,13 @@ function advanceStep(room) {
       room.stepIdx = 0;
       runStep(room);
     } else {
-      const ranking = [...room.players].sort((a, b) => {
-        if (b.gloria !== a.gloria) return b.gloria - a.gloria;
-        return ownedTerritories(room, b.id).length - ownedTerritories(room, a.id).length;
-      });
-      endGame(room, ranking[0].id, 'gloria');
+      // Fin de la Era III sin conquista total: gana quien más territorio controle
+      // (Maravillas cuentan doble; desempates: Gloria y después Recursos).
+      const ranking = [...room.players].sort((a, b) =>
+        conquestScore(room, b) - conquestScore(room, a)
+        || b.gloria - a.gloria
+        || (b.resources || 0) - (a.resources || 0));
+      endGame(room, ranking[0].id, 'territorios');
     }
     return;
   }
@@ -1153,9 +1172,7 @@ function resolveOrders(room) {
   if (victory) {
     room.pendingVictory = victory;
     const vp = playerById(room, victory.winnerId);
-    resolveLog.push(victory.type === 'dominacion'
-      ? `🗺️ ¡${vp.name} controla ${dominationNeeded(room)} territorios o más! VICTORIA POR DOMINACIÓN.`
-      : `🏛️ ¡${vp.name} controla ${WONDERS_TO_WIN} Maravillas! VICTORIA POR CULTURA.`);
+    resolveLog.push(`🗺️ ¡${vp.name} controla TODO el mapa abierto! VICTORIA POR CONQUISTA.`);
   }
 
   room.resolveLog = resolveLog;
@@ -1373,11 +1390,7 @@ const actions = {
     if ((p.resources || 0) < WONDER_COST) return { error: `Te faltan Recursos (necesitas ${WONDER_COST}, tienes ${p.resources || 0}).` };
     p.resources -= WONDER_COST;
     t.wonder = room.wonderDeck.pop();
-    log(room, `🏛️ ${p.name} construye ${t.wonder.name} en ${t.name} (${ownedWonders(room, p.id).length}/${WONDERS_TO_WIN} Maravillas).`);
-    if (ownedWonders(room, p.id).length >= WONDERS_TO_WIN) {
-      endGame(room, p.id, 'cultura');
-      return { ok: true };
-    }
+    log(room, `🏛️ ${p.name} construye ${t.wonder.name} en ${t.name} — esa provincia ahora vale DOBLE en el recuento final del mapa.`);
     emitRoom(room);
     return { ok: true };
   },

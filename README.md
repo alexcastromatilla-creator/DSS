@@ -32,7 +32,7 @@ Sigue **`DEPLOY_RENDER.md`**: dos webs y un rato de clics, sin terminal, y tené
 
 ## Las 8 órdenes de cada ronda
 
-1. **⚔️ Asalto** — combate a dados estilo Risk contra una provincia vecina (o **colonización** de provincias libres en la 1ª ronda de cada Era, eligiendo tú la clase con la que desembarcas). Si aniquilas la guarnición, conquistas y tus supervivientes **marchan** a la nueva provincia.
+1. **⚔️ Asalto** — combate a dados estilo Risk contra una provincia vecina (o **colonización** de las provincias que quedan libres en la 1ª ronda de cada Era, eligiendo tú la clase con la que desembarcas). Si aniquilas la guarnición, conquistas y tus supervivientes **marchan** a la nueva provincia.
 2. **💣 Asedio** — duelo a 1 dado (la ventaja de clase suma +1): si ganas, la guarnición pierde 1 tropa; si pierdes, la pierdes tú. No conquista: desgasta.
 3. **🐎 Incursión** — duelo a 1 dado contra la provincia de un rival: si ganas, le robas hasta 3 Recursos 💰.
 4. **🛡️ Reforzar** — mueve tropas de tu reserva a una provincia tuya.
@@ -59,12 +59,14 @@ Propones matrimonio como orden; el otro jugador acepta o rechaza cuando quiera (
 
 Cada provincia da 1 💰 por ronda (Mansa Musa +1). Las **Maravillas** cuestan 15 💰, se construyen en provincias tuyas (una por provincia) y **quedan ligadas a la provincia: si te la conquistan, la Maravilla cambia de dueño**.
 
-## Las 3 formas de ganar
+## Cómo se gana: conquistando el mapa
 
-El panel "🏆 Vías de victoria" muestra el progreso de todos en todo momento:
-1. **🗺️ Dominación** — 60% de las provincias abiertas al final de cualquier ronda (5/8 en Era I, 10/16 en II, 15/24 en III): victoria instantánea.
-2. **🏛️ Cultura** — controla 3 Maravillas a la vez (construidas… o arrebatadas): victoria instantánea.
-3. **🏆 Gloria** — si nadie ganó antes, al final de la Era III gana quien más Gloria acumule (Simposios, Desafíos, Personajes, Bolívar).
+**Cada casa empieza la partida con un territorio aleatorio de la Era I** (con 3 tropas) — desde el primer minuto tienes hogar que defender y frontera que expandir.
+
+1. **🗺️ Conquista total** — si al final de cualquier ronda controlas TODOS los territorios abiertos del mapa, ganas al instante.
+2. **⚑ Recuento final** — si nadie conquista el mapa entero, al final de la Era III gana quien más territorio controle. Cada **Maravilla 🏛️ hace que su provincia valga doble** en el recuento (y se puede robar conquistando la provincia). Desempates: Gloria 🏆 (Simposios, Desafíos, Personajes, Bolívar) y después Recursos.
+
+El panel "🏆 Vías de victoria" muestra en todo momento la puntuación ⚑ de conquista de cada jugador.
 
 ## Reiniciar / salir / bots
 

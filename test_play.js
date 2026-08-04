@@ -101,7 +101,14 @@ async function run() {
   if (!allClassed) throw new Error('FALLO: hay territorios sin clase de guarnición válida');
   const allPathed = Object.values(players[0].state.territories).every((t) => typeof t.path === 'string' && t.path.startsWith('M'));
   if (!allPathed) throw new Error('FALLO: hay territorios sin polígono (t.path) para el mapa político');
-  console.log('OK: Recursos, niveles por clase, clases de guarnición y polígonos presentes.');
+  // Territorio inicial: cada jugador debe empezar con EXACTAMENTE 1 territorio de la Era I con 3 tropas.
+  for (const p of players) {
+    const starting = Object.values(players[0].state.territories).filter((t) => t.owner === p.id);
+    if (starting.length !== 1) throw new Error(`FALLO: ${p.name} empieza con ${starting.length} territorios (esperado 1)`);
+    if (starting[0].armies !== 3) throw new Error(`FALLO: el territorio inicial de ${p.name} tiene ${starting[0].armies} tropas (esperado 3)`);
+    if (starting[0].era !== 1) throw new Error('FALLO: el territorio inicial no es de la Era I');
+  }
+  console.log('OK: Recursos, niveles, polígonos y territorio inicial (1 por jugador, 3 tropas) presentes.');
 
   let iterations = 0;
   let lastPhaseKey = '';
@@ -213,7 +220,7 @@ async function run() {
   if (badArmies) { console.error('FALLO: algún territorio terminó con tropas negativas'); process.exit(1); }
   const v = players[0].state.victory;
   console.log('Victoria:', JSON.stringify(v));
-  if (!v || !['gloria', 'dominacion', 'cultura'].includes(v.type)) { console.error('FALLO: la partida terminó sin motivo de victoria válido'); process.exit(1); }
+  if (!v || !['conquista', 'territorios'].includes(v.type)) { console.error('FALLO: la partida terminó sin motivo de victoria válido (conquista/territorios)'); process.exit(1); }
   console.log('Niveles de clase finales:', players[0].state.players.map(p => ({ name: p.name, troopLevels: p.troopLevels })));
   console.log('OK: 24 territorios, Recursos y tropas válidos hasta el final, y victoria con motivo (' + v.type + ').');
   console.log('TEST OK: la partida completa se resolvió sin errores.');
