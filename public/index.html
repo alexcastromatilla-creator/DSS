@@ -6,193 +6,212 @@
 <title>El Banquete</title>
 <style>
   :root {
-    --bg: #171220; --panel: #2a2233; --accent: #d4a24c; --text: #f2ece0;
+    --gold: #d9b45b; --gold-hi: #f4dc9a; --gold-dk: #8a6c2f;
+    --ink: #10151f; --text: #efe6cf; --muted: #a89f8a;
     --p0: #e15757; --p1: #4cb8a0; --p2: #e1a940; --p3: #5aa9e6; --p4: #b06ee0; --p5: #6ee0a8;
   }
   * { box-sizing: border-box; }
-  @keyframes bgDrift {
-    0% { background-position: 0% 0%, 0 0; }
-    100% { background-position: 100% 100%, 40px 40px; }
-  }
-  @keyframes idleFloat {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-3px) rotate(-1.5deg); }
-  }
-  @keyframes glowPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(212,162,76,0.0), 0 2px 6px rgba(0,0,0,0.3); }
-    50% { box-shadow: 0 0 18px 2px rgba(212,162,76,0.35), 0 2px 6px rgba(0,0,0,0.3); }
-  }
-  @keyframes fadeSlideIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes diceRoll {
-    0% { transform: rotate(0deg) scale(1); }
-    30% { transform: rotate(140deg) scale(1.15); }
-    60% { transform: rotate(250deg) scale(0.95); }
-    100% { transform: rotate(360deg) scale(1); }
-  }
-  @keyframes sparkle {
-    0% { opacity: 0; transform: scale(0.6) translateY(6px); }
-    40% { opacity: 1; }
-    100% { opacity: 0; transform: scale(1.3) translateY(-14px); }
-  }
   body {
-    margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: var(--text); min-height: 100vh;
+    margin: 0; color: var(--text); min-height: 100vh;
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
     background:
-      radial-gradient(circle at 15% 20%, rgba(212,162,76,0.10), transparent 40%),
-      radial-gradient(circle at 85% 80%, rgba(90,169,230,0.10), transparent 40%),
-      linear-gradient(135deg, #1b1622 0%, #171220 50%, #201830 100%);
-    background-size: 200% 200%, 60px 60px, 100% 100%;
-    animation: bgDrift 30s ease-in-out infinite alternate;
+      radial-gradient(ellipse 120% 50% at 50% -10%, #232c44 0%, transparent 60%),
+      linear-gradient(180deg, #141a28 0%, #0d1119 60%, #0a0d13 100%);
   }
-  #app { max-width: 480px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
-  h1 { font-size: 1.5rem; text-align: center; color: var(--accent); margin: 12px 0 4px; letter-spacing: 1px; }
-  h2 { font-size: 1.1rem; color: var(--accent); margin: 18px 0 8px; }
-  .sub { text-align: center; color: #b8afc4; font-size: 0.85rem; margin-bottom: 16px; }
-  .card {
-    background: linear-gradient(160deg, var(--panel), #241d30);
-    border: 1px solid rgba(212,162,76,0.12);
-    border-radius: 12px; padding: 14px; margin-bottom: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    animation: fadeSlideIn 0.35s ease-out;
-  }
+  #app { max-width: 480px; margin: 0 auto; padding: 12px 12px 60px; position: relative; z-index: 1; }
+  h1 { font-size: 1.45rem; text-align: center; margin: 10px 0 2px; letter-spacing: 4px; font-weight: 700;
+    background: linear-gradient(180deg, #f7e6b2, var(--gold) 55%, #a8842f);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .sub { text-align: center; color: var(--muted); font-size: 0.62rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+  h2 { font-size: 0.82rem; color: var(--gold); margin: 4px 0 10px; letter-spacing: 2.5px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  h2::before, h2::after { content: ''; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--gold-dk)); }
+  h2::after { background: linear-gradient(90deg, var(--gold-dk), transparent); }
+
+  .card { position: relative; border: 1px solid var(--gold-dk); border-radius: 10px; padding: 13px 12px; margin-bottom: 12px;
+    background: linear-gradient(175deg, #1c2536 0%, #141b29 55%, #10161f 100%);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45); animation: fadeSlideIn 0.35s ease-out; }
+  .card::before { content: ''; position: absolute; inset: 3px; border: 1px solid rgba(217,180,91,0.3); border-radius: 7px; pointer-events: none; }
+  .card > * { position: relative; }
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
   input[type=text], input[type=number] {
-    width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #4a3f5c; background: #17131d; color: var(--text);
-    font-size: 1rem; margin-bottom: 10px;
-  }
-  select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #4a3f5c; background: #17131d; color: var(--text); margin-bottom: 10px; font-size: 0.95rem;}
+    width: 100%; padding: 11px; border-radius: 7px; border: 1px solid #4a3f5c; background: #12161f; color: var(--text);
+    font-size: 1rem; margin-bottom: 10px; font-family: inherit; }
+  select { width: 100%; padding: 10px; border-radius: 7px; border: 1px solid #4a3f5c; background: #12161f; color: var(--text);
+    margin-bottom: 10px; font-size: 0.92rem; font-family: inherit; }
   button {
-    width: 100%; padding: 13px; border-radius: 8px; border: none; background: var(--accent); color: #1b1622;
-    font-weight: 700; font-size: 1rem; margin-bottom: 8px; cursor: pointer;
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
-  }
+    width: 100%; padding: 12px 10px; border-radius: 7px; border: none; font-family: inherit;
+    color: #241a08; font-weight: 700; font-size: 0.98rem; letter-spacing: 0.5px; margin-bottom: 8px; cursor: pointer;
+    background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 40%, #b98f3e 90%);
+    box-shadow: 0 0 0 1px #6d5420, 0 4px 10px rgba(0,0,0,0.55), inset 0 1px 0 #fff6d8, inset 0 -2px 4px rgba(109,66,10,0.55);
+    transition: transform 0.12s ease; }
   button:active { transform: scale(0.97); }
   button:disabled { opacity: 0.45; }
-  button.secondary { background: #423861; color: var(--text); }
-  .option-btn { background: #3a3050; color: var(--text); text-align: left; font-weight: 500; }
-  .option-btn.chosen { background: var(--accent); color: #1b1622; animation: glowPulse 1.6s ease-in-out infinite; }
+  button.secondary { color: var(--gold-hi); background: linear-gradient(180deg, #232d42, #161d2c 85%);
+    box-shadow: 0 0 0 1px var(--gold-dk), 0 4px 10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(244,220,154,0.25); }
   .row { display: flex; gap: 8px; }
   .row > * { flex: 1; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.75rem; margin-right: 4px; }
   .players-list { display: flex; flex-direction: column; gap: 8px; }
-  .player-chip { display: flex; justify-content: space-between; align-items: center; background: #241d2e; padding: 8px 12px; border-radius: 8px; animation: fadeSlideIn 0.3s ease-out; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+  .player-chip { display: flex; justify-content: space-between; align-items: center; background: #121722; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid rgba(217,180,91,0.15); animation: fadeSlideIn 0.3s ease-out; }
+  .portrait-row { display: flex; align-items: center; gap: 12px; }
   .territories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .territory { background: #241d2e; border-radius: 8px; padding: 8px; font-size: 0.8rem; border: 2px solid transparent; transition: border-color 0.3s ease; }
-  .era-label { color: var(--accent); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; margin: 8px 0 4px; text-transform: uppercase; opacity: 0.85; }
+  .territory { background: #121722; border-radius: 8px; padding: 8px; font-size: 0.8rem; border: 2px solid transparent; transition: border-color 0.3s ease; }
+  .era-label { color: var(--gold); font-size: 0.72rem; font-weight: 700; letter-spacing: 2px; margin: 10px 0 5px; text-transform: uppercase; opacity: 0.9; }
   .unit-icons { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 1px; vertical-align: middle; margin-top: 3px; }
-  .unit-icon { font-size: 1rem; line-height: 1; display: inline-block; animation: idleFloat 3.2s ease-in-out infinite; }
-  .unit-icons b { margin-left: 5px; color: var(--accent); font-size: 0.78rem; font-weight: 700; }
-  .map-legend { font-size: 0.7rem; line-height: 1.5; margin-bottom: 10px; }
+  .unit-icon { font-size: 0.95rem; line-height: 1; display: inline-block; }
+  .unit-icons b { margin-left: 5px; color: var(--gold); font-size: 0.78rem; font-weight: 700; }
+  .map-legend { font-size: 0.68rem; line-height: 1.6; margin: 6px 2px 8px; color: var(--muted); text-align: center; }
+  .map-legend b { color: var(--text); }
   .terr-shape { cursor: pointer; }
   .terr-shape:active { opacity: 0.75; }
   @keyframes flashPulse {
-    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3); transform: scale(1); }
-    50% { box-shadow: 0 0 0 3px var(--accent), 0 2px 10px rgba(0,0,0,0.4); transform: scale(1.03); }
-  }
+    0%, 100% { box-shadow: none; transform: scale(1); }
+    50% { box-shadow: 0 0 0 3px var(--gold); transform: scale(1.03); } }
   .territory.flash { animation: flashPulse 0.9s ease-in-out; }
-  .log { font-size: 0.85rem; color: #cbc2d9; max-height: 200px; overflow-y: auto; }
-  .log div { padding: 4px 0; border-bottom: 1px solid #382e48; animation: fadeSlideIn 0.25s ease-out; }
+  .log { font-size: 0.84rem; color: #cbc2d9; max-height: 220px; overflow-y: auto; }
+  .log div { padding: 4px 0; border-bottom: 1px solid #2c2b3b; animation: fadeSlideIn 0.25s ease-out; }
   .center { text-align: center; }
-  .muted { color: #9d92ae; font-size: 0.85rem; }
-  .flavor { font-style: italic; color: #cbc2d9; line-height: 1.4; }
-  .rank { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #241d2e; border-radius: 8px; margin-bottom: 6px; }
-  .rank.first { border: 2px solid var(--accent); animation: glowPulse 1.8s ease-in-out infinite; }
+  .muted { color: var(--muted); font-size: 0.85rem; }
+  .flavor { font-style: italic; color: #cbc2d9; line-height: 1.45; }
+  .rank { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #121722; border-radius: 8px; margin-bottom: 6px; }
+  .rank.first { border: 1.5px solid var(--gold); box-shadow: 0 0 14px rgba(217,180,91,0.3); }
   #err { color: #ff8080; text-align: center; min-height: 20px; font-size: 0.85rem; }
 
-  /* Retratos: círculo con icono; si hay ilustración real en public/images/ se ve encima. */
-  .portrait {
-    width: 46px; height: 46px; min-width: 46px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
-    border: 2px solid rgba(255,255,255,0.15);
-    animation: idleFloat 4.5s ease-in-out infinite;
-  }
-  .portrait.big { width: 68px; height: 68px; font-size: 2.1rem; }
-  .portrait-row { display: flex; align-items: center; gap: 12px; }
-
-  .char-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; animation: fadeSlideIn 0.4s ease-out; }
-  .char-item .portrait { width: 34px; height: 34px; min-width: 34px; font-size: 1.1rem; }
-
-  /* Marco "cuadro pintado": si hay ilustración real en public/images/ se muestra encima;
-     si no, se ve el icono con el mismo marco ornamentado. */
   .frame { position: relative; border-radius: 50%; overflow: hidden; flex-shrink: 0;
-    box-shadow: 0 0 0 2px #17131d, 0 0 0 4px var(--accent), 0 3px 8px rgba(0,0,0,0.4);
-    animation: idleFloat 4.5s ease-in-out infinite; background: #3a3050;
+    box-shadow: 0 0 0 2px #0c0f16, 0 0 0 3.5px var(--gold-dk), 0 3px 8px rgba(0,0,0,0.5);
+    background: radial-gradient(circle at 35% 30%, #2c3550, #1a2135 70%);
     display: flex; align-items: center; justify-content: center; }
-  .frame::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
-    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 48%, transparent 66%);
-    background-size: 220% 220%; animation: sheen 4s ease-in-out infinite; pointer-events: none; }
   .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .frame .fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   .frame.medium { width: 46px; height: 46px; font-size: 1.5rem; }
   .frame.small { width: 34px; height: 34px; font-size: 1.1rem; }
   .frame.big { width: 78px; height: 78px; font-size: 2.2rem; }
-  @keyframes sheen {
-    0%, 100% { background-position: 0% 0%; }
-    50% { background-position: 100% 100%; }
-  }
+  .char-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 
-  /* Tarjetas de líder (pantalla de selección estilo "elige tu civilización") */
-  .leader-card { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; }
-  .leader-card .info { flex: 1; }
-  .leader-card .name { font-weight: 700; margin-bottom: 1px; }
-  .leader-card .ltitle { font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase; opacity: 0.8; margin-bottom: 3px; }
-  .leader-card .desc { font-weight: 400; font-size: 0.78rem; opacity: 0.85; line-height: 1.3; }
-  .leader-card.chosen .desc, .leader-card.chosen .ltitle { opacity: 0.95; }
+  /* HUD del tablero */
+  .hud { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 10px; }
+  .hud .res { display: flex; gap: 11px; font-size: 0.82rem; color: var(--gold-hi); }
+  .hud .res b { color: #fff; }
+  .roundTrack { display: flex; align-items: center; gap: 3px; }
+  .roundTrack .lab { font-size: 0.62rem; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; margin-right: 5px; }
+  .rd { width: 7px; height: 7px; border-radius: 50%; background: #2c3346; box-shadow: inset 0 1px 2px #000; }
+  .rd.done { background: var(--gold); box-shadow: 0 0 5px rgba(217,180,91,0.7); }
+  .mapFrame { position: relative; padding: 4px; }
+  .mapFrame svg { display: block; width: 100%; height: auto; border-radius: 7px; }
 
-  /* Animación de dados durante la resolución de combate */
-  .dice-row { display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
-  .die { width: 26px; height: 26px; border-radius: 6px; background: #3a3050; border: 1px solid rgba(255,255,255,0.15);
-    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
-    animation: diceRoll 0.5s ease-out; }
-
-  .sparkle-emoji { display: inline-block; animation: sparkle 1.1s ease-out; }
-
-  /* Monumento de fondo: cambia según la Era. */
-  #monumentBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: 0.16; }
-  #monumentBg svg, #monumentBg img { position: absolute; bottom: -4%; left: 50%; transform: translateX(-50%);
-    width: 130%; max-width: 900px; animation: monumentPan 40s ease-in-out infinite alternate; }
-  #monumentBg img { object-fit: cover; height: 60%; width: 100%; max-width: none; }
-  @keyframes monumentPan {
-    0% { transform: translateX(-52%) scale(1); }
-    100% { transform: translateX(-48%) scale(1.04); }
-  }
-  #app { position: relative; z-index: 1; }
-
-  /* Barra persistente de sala: código, Recursos, reiniciar (anfitrión) y salir */
-  #roomBar { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 6px 2px 10px; font-size: 0.8rem; }
+  /* Barra superior de sala */
+  #roomBar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 2px 8px; font-size: 0.78rem; }
   #roomBar .roomBarBtns { display: flex; gap: 6px; }
-  button.tiny { width: auto; padding: 6px 10px; font-size: 0.78rem; margin-bottom: 0; border-radius: 20px; }
+  button.tiny { width: auto; padding: 6px 10px; font-size: 0.74rem; margin-bottom: 0; border-radius: 20px; }
 
-  /* Panel de tropas: una sección por clase, con su ventaja y su escalera de niveles */
-  .troop-tier { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #382e48; }
+  /* Rejilla de órdenes */
+  .ordGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
+  .ord { display: flex; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; cursor: pointer; text-align: left;
+    background: linear-gradient(170deg, #1d2638, #151c2b); box-shadow: 0 0 0 1px #2c3143, inset 0 1px 0 rgba(255,255,255,0.05); }
+  .ord .ic { font-size: 17px; width: 24px; text-align: center; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.6)); }
+  .ord .tx b { display: block; font-size: 0.72rem; letter-spacing: 0.3px; }
+  .ord .tx span { font-size: 0.56rem; color: var(--muted); line-height: 1.25; display: block; margin-top: 1px; }
+  .ord.sel { box-shadow: 0 0 0 1.6px var(--gold), 0 0 12px rgba(217,180,91,0.3), inset 0 1px 0 rgba(255,255,255,0.08); }
+
+  /* Unidades del mapa */
+  @keyframes unitIdle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-0.9px); } }
+  .unitG { animation: unitIdle 3.4s ease-in-out infinite; }
+  @keyframes targetPulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+  .targetRing { animation: targetPulse 1.6s ease-in-out infinite; }
+  @keyframes stepBob { 0%,100% { transform: translateY(0) rotate(-1.6deg); } 50% { transform: translateY(-1.8px) rotate(1.6deg); } }
+  .marchFigs { animation: stepBob 0.4s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes fxFloat { 0% { opacity: 0; transform: translateY(4px); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+  .fxFloat { animation: fxFloat 1.8s ease-out both; }
+  @keyframes fxBoom { 0% { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1.25); } 60% { transform: scale(0.95); } 100% { opacity: 0; transform: scale(1.1); } }
+  .fxBoom { animation: fxBoom 1.4s ease-out both; }
+
+  /* Escena de batalla */
+  .battleCard { margin-bottom: 12px; }
+  .battleTitle { text-align: center; font-size: 0.95rem; color: var(--gold-hi); margin: 0 0 2px; }
+  .battleSub { text-align: center; font-size: 0.68rem; color: var(--muted); margin: 0 0 8px; }
+  .armiesRow { position: relative; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 2px; min-height: 104px;
+    background: linear-gradient(180deg, rgba(30,40,58,0) 40%, rgba(52,66,44,0.35) 78%, rgba(40,50,34,0.5) 100%); border-radius: 8px; overflow: hidden; }
+  @keyframes hitFlash { 0%, 20%, 100% { opacity: 0; } 30%, 44% { opacity: 1; } 58% { opacity: 0; } }
+  .clash { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); font-size: 24px;
+    filter: drop-shadow(0 0 8px rgba(255,190,70,0.9)); animation: hitFlash 2.6s ease-in-out 0.8s both; }
+  .armyLbl { display: flex; justify-content: space-between; padding: 4px 12px 0; font-size: 0.68rem; }
+  .armyLbl small { display: block; font-size: 0.55rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .duels { margin: 10px 2px 2px; display: flex; flex-direction: column; gap: 6px; }
+  .duel { display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .die2 { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.9rem; color: #1d1607; background: linear-gradient(160deg, #f6efe2, #cfc4ac);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.5), inset 0 1px 0 #fff, inset 0 -2px 3px rgba(120,100,60,0.5);
+    animation: rollIn 0.8s cubic-bezier(.2,.8,.3,1.1) both; }
+  .die2.red { background: linear-gradient(160deg, #d96555, #a13527); color: #fff2ea; }
+  .die2.dim { opacity: 0.35; }
+  @keyframes rollIn { 0% { transform: rotate(0) translateY(-24px) scale(0.6); opacity: 0; }
+    55% { transform: rotate(310deg) translateY(3px) scale(1.06); opacity: 1; }
+    100% { transform: rotate(360deg) translateY(0) scale(1); } }
+  .duelArrow { font-size: 0.74rem; width: 72px; text-align: center; border-radius: 20px; padding: 2px 0; font-weight: 700; }
+  .duelArrow.atk { background: rgba(120,190,90,0.16); color: #9fe08a; box-shadow: 0 0 0 1px rgba(120,190,90,0.4); }
+  .duelArrow.def { background: rgba(230,90,70,0.14); color: #ff9d8a; box-shadow: 0 0 0 1px rgba(230,90,70,0.4); }
+  .duelArrow.none { background: rgba(255,255,255,0.05); color: #77705e; box-shadow: 0 0 0 1px rgba(255,255,255,0.12); font-weight: 400; }
+  .duelNote { font-size: 0.56rem; color: var(--muted); width: 62px; text-align: center; line-height: 1.25; }
+  .riskCaption { text-align: center; font-size: 0.62rem; color: var(--muted); margin: 8px 0 0; }
+  @keyframes ribbonIn { 0%, 40% { opacity: 0; transform: scale(0.85); } 55% { opacity: 1; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+  .ribbon { display: inline-block; padding: 7px 22px; margin-top: 8px; font-size: 0.85rem; font-weight: 700; color: #241a08;
+    background: linear-gradient(180deg, var(--gold-hi), var(--gold) 60%, #b98f3e);
+    clip-path: polygon(4% 0, 96% 0, 100% 50%, 96% 100%, 4% 100%, 0 50%);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5); animation: ribbonIn 2.4s ease-in-out both; }
+  .ribbon.dark { color: var(--text); background: linear-gradient(180deg, #3a4358, #232b3d 70%); }
+  .ribbonWrap { text-align: center; }
+
+  /* Líderes */
+  .leader-card { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; margin-bottom: 8px;
+    color: var(--text); font-weight: 500; background: linear-gradient(170deg, #1d2638, #151c2b);
+    box-shadow: 0 0 0 1px #2c3143; }
+  .leader-card .info { flex: 1; }
+  .leader-card .name { font-weight: 700; margin-bottom: 1px; font-size: 0.95rem; }
+  .leader-card .ltitle { font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.85; margin-bottom: 3px; }
+  .leader-card .desc { font-weight: 400; font-size: 0.74rem; opacity: 0.85; line-height: 1.35; }
+  .leader-card.chosen { box-shadow: 0 0 0 1.6px var(--gold), 0 0 14px rgba(217,180,91,0.35); }
+  .leader-card:disabled { opacity: 0.45; }
+
+  /* Panel de tropas / victoria / maravillas */
+  .troop-tier { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #2c2b3b; }
   .troop-tier:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
   .troop-tier-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-  .troop-tier-head .portrait { width: 40px; height: 40px; min-width: 40px; font-size: 1.3rem; }
-  .tactica { font-size: 0.76rem; color: #cbc2d9; margin: 2px 0 8px; line-height: 1.35; }
+  .tactica { font-size: 0.72rem; color: #cbc2d9; margin: 2px 0 8px; line-height: 1.35; }
   .level-ladder { margin-bottom: 8px; }
   .level-row { padding: 4px 0 6px 10px; border-left: 3px solid #3a3050; margin-bottom: 2px; }
-  .level-row.level-current { border-left-color: var(--accent); }
-  .level-row-title { font-weight: 600; font-size: 0.82rem; }
-  .level-row-desc { font-size: 0.74rem; margin-top: 2px; line-height: 1.35; }
-  .level-up-btn { font-size: 0.85rem; }
-
-  /* Tabla de vías de victoria */
+  .level-row.level-current { border-left-color: var(--gold); }
+  .level-row-title { font-weight: 600; font-size: 0.78rem; }
+  .level-row-desc { font-size: 0.7rem; margin-top: 2px; line-height: 1.35; }
+  .level-up-btn { font-size: 0.82rem; }
   .victory-row { display: flex; align-items: center; justify-content: space-between; gap: 6px;
-    background: #241d2e; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.82rem; }
+    background: #121722; border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.78rem; }
+  .victory-row .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
   .victory-row .vname { flex: 1; font-weight: 600; }
-  .victory-row .vstat { min-width: 62px; text-align: right; }
-  .victory-note { font-size: 0.72rem; line-height: 1.4; }
+  .victory-row .vstat { min-width: 56px; text-align: right; }
+  .victory-note { font-size: 0.66rem; line-height: 1.5; }
+
+  /* Boda */
+  .wedCard { text-align: center; }
+  .wedPair { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 10px 0 8px; }
+  @keyframes ringsGlow { 0%,100% { filter: drop-shadow(0 0 3px rgba(244,220,154,0.5)); transform: rotate(-6deg); }
+    50% { filter: drop-shadow(0 0 10px rgba(244,220,154,0.95)); transform: rotate(6deg); } }
+  .rings { font-size: 25px; animation: ringsGlow 2.6s ease-in-out infinite; }
+  .wedText { font-size: 0.8rem; line-height: 1.5; color: #d8cfb8; margin: 4px 6px 10px; }
+  .wedText b { color: var(--gold-hi); }
+  .wedFx { font-size: 0.66rem; line-height: 1.55; color: var(--muted); margin: 0 4px 10px; }
+  .spouseLine { font-size: 0.76rem; color: #d8cfb8; background: #121722; border-radius: 8px; padding: 7px 10px; margin-bottom: 8px; }
+
+  /* Portada */
+  .heroTitle { position: relative; text-align: center; padding: 26px 0 6px; }
+  .heroTitle .laurel { width: 210px; display: block; margin: 0 auto -8px; }
 </style>
 </head>
 <body>
-<div id="monumentBg" aria-hidden="true"></div>
 <div id="app">
-  <h1>🍷 EL BANQUETE</h1>
-  <div class="sub">Estrategia, historia y brindis — para 2 a 6 jugadores</div>
+  <h1>EL BANQUETE</h1>
+  <div class="sub">Conquista · Historia · Brindis</div>
   <div id="roomBar"></div>
   <div id="err"></div>
   <div id="screen"></div>
@@ -201,25 +220,22 @@
 <script>
 let myId = localStorage.getItem('banquete_playerId') || null;
 let state = null;
-let joinedName = '';
+let prevPhase = null;
 const screen = document.getElementById('screen');
 const errBox = document.getElementById('err');
 
-const PLAYER_COLORS = ['var(--p0)', 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)', 'var(--p5)'];
 const PLAYER_COLORS_RAW = ['#e15757', '#4cb8a0', '#e1a940', '#5aa9e6', '#b06ee0', '#6ee0a8'];
-// Mismo tamaño de lienzo que usa el servidor para calcular coordenadas y polígonos.
-const MAP_W = 320, MAP_H = 380;
+const MAP_W = 360, MAP_H = 470;
 const CLASS_KEYS = ['inf', 'cab', 'arq'];
 const ERA_LABELS = { 1: 'Era I', 2: 'Era II', 3: 'Era III' };
 
 function colorFor(playerId) {
   if (!state) return '#666';
   const idx = state.players.findIndex(p => p.id === playerId);
-  return idx >= 0 ? PLAYER_COLORS_RAW[idx] : '#666';
+  return idx >= 0 ? PLAYER_COLORS_RAW[idx] : '#9a9aa6';
 }
 function nameFor(playerId) {
-  if (!state) return '';
-  const p = state.players.find(p => p.id === playerId);
+  const p = state && state.players.find(p => p.id === playerId);
   return p ? p.name : '';
 }
 function me() { return state && state.players.find(p => p.id === myId); }
@@ -227,80 +243,38 @@ function clsDef(cls) { return state.troopClasses[cls] || state.troopClasses.inf;
 function clsEraName(cls, era) { const c = clsDef(cls); return (c.byEra[era] || c.byEra[1]).name; }
 function clsEraIcon(cls, era) { const c = clsDef(cls); return (c.byEra[era] || c.byEra[1]).icon; }
 function counterOf(cls) { return CLASS_KEYS.find(k => state.troopClasses[k].beats === cls); }
-// Coste real de subir de nivel una clase para MÍ (Sun Tzu paga 2 menos, igual que en el servidor).
 function myLevelCost(baseCost) {
   const m = me();
   return Math.max(1, baseCost - (m && m.leader === 'suntzu' ? 2 : 0));
 }
+function hashStr(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
 
-// Fila visual de unidades: repite el icono de la clase de guarnición una vez por tropa (máx 6).
 function unitBadge(t) {
   const icon = clsEraIcon(t.unitClass, t.era);
   const n = Math.max(0, t.armies || 0);
   if (!n) return `<span class="unit-icons muted">sin tropas</span>`;
   const shown = Math.min(n, 6);
-  const icons = Array.from({ length: shown }, (_, i) => `<span class="unit-icon" style="animation-delay:${(i * 0.15).toFixed(2)}s">${icon}</span>`).join('');
+  const icons = Array.from({ length: shown }, () => `<span class="unit-icon">${icon}</span>`).join('');
   return `<span class="unit-icons">${icons}<b>×${n}</b></span>`;
 }
-// Marco de "cuadro pintado": ilustración real si existe en public/images/<portrait>, si no el icono.
 function portraitFrame(entity, size) {
   const sizeClass = size || 'medium';
   const img = entity.portrait ? `<img src="/images/${entity.portrait}" alt="" onerror="this.remove()">` : '';
   return `<span class="frame ${sizeClass}">${img}<span class="fallback">${entity.icon || '👑'}</span></span>`;
 }
-
 function showError(msg) {
   errBox.textContent = msg;
   setTimeout(() => { errBox.textContent = ''; }, 3500);
 }
-
 function handleNotice(notice) {
   if (!notice) return;
   if (notice.type === 'spy_result') {
-    alert(`Espionaje sobre ${notice.target}:\n${notice.info}`);
+    alert(`🕵️ Espionaje sobre ${notice.target}:\nEjército: ${notice.info}\nSu orden de esta ronda: ${notice.orden}`);
+  }
+  if (notice.type === 'marriage_proposal') {
+    // La tarjeta de propuesta aparece en pantalla; esto es solo el aviso sonoro/visual.
   }
 }
-
-// Dibujo vectorial de reserva para el monumento de fondo de cada Era.
-const MONUMENT_SVG = {
-  1: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" fill="var(--accent)">
-    <polygon points="200,15 350,95 50,95"/>
-    <rect x="45" y="95" width="310" height="10"/>
-    ${[0,1,2,3,4,5,6].map(i => `<rect x="${60 + i*40}" y="105" width="16" height="75"/>`).join('')}
-    <rect x="40" y="180" width="320" height="16"/>
-  </svg>`,
-  2: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" fill="var(--accent)">
-    <rect x="50" y="120" width="300" height="60"/>
-    <circle cx="200" cy="108" r="52"/>
-    <rect x="172" y="150" width="56" height="35"/>
-    <rect x="66" y="55" width="14" height="130"/>
-    <polygon points="66,55 80,55 73,35"/>
-    <rect x="320" y="55" width="14" height="130"/>
-    <polygon points="320,55 334,55 327,35"/>
-  </svg>`,
-  3: `<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" fill="var(--accent)">
-    <rect x="60" y="130" width="140" height="50"/>
-    <polygon points="130,60 200,130 60,130"/>
-    <ellipse cx="130" cy="60" rx="30" ry="14"/>
-    <rect x="210" y="90" width="150" height="90"/>
-    <polygon points="210,150 250,120 320,120 360,150"/>
-    <polygon points="230,120 250,90 320,90 340,120"/>
-  </svg>`,
-};
-
-function renderMonumentBg() {
-  const bg = document.getElementById('monumentBg');
-  if (!bg) return;
-  const era = (state && state.era) || 1;
-  if (bg.dataset.era === String(era)) return;
-  bg.dataset.era = String(era);
-  const file = state && state.eraInfo && state.eraInfo.monumento ? state.eraInfo.monumento : `monumento_era${era}.png`;
-  bg.innerHTML = `
-    ${MONUMENT_SVG[era] || MONUMENT_SVG[1]}
-    <img src="/images/${file}" alt="" onerror="this.remove()">
-  `;
-}
-renderMonumentBg();
 
 function renderRoomBar() {
   const bar = document.getElementById('roomBar');
@@ -310,24 +284,19 @@ function renderRoomBar() {
   const m = me();
   const showResources = m && state.phase !== 'lobby';
   bar.innerHTML = `
-    <span class="muted">Sala ${state.code}${showResources ? ` · 💰 ${m.resources || 0}` : ''}</span>
+    <span class="muted">Sala ${state.code}${showResources ? ` · 💰 ${m.resources || 0} · 🏆 ${m.gloria}` : ''}${m && m.married ? ' · 💍' : ''}</span>
     <span class="roomBarBtns">
       ${isHost ? `<button class="tiny secondary" id="restartBtn">🔄 Reiniciar</button>` : ''}
       <button class="tiny secondary" id="exitBtn">🚪 Salir</button>
-    </span>
-  `;
+    </span>`;
   const restartBtn = document.getElementById('restartBtn');
   if (restartBtn) restartBtn.onclick = () => call('restart_room');
-  document.getElementById('exitBtn').onclick = () => {
-    localStorage.removeItem('banquete_playerId');
-    location.reload();
-  };
+  document.getElementById('exitBtn').onclick = () => { localStorage.removeItem('banquete_playerId'); location.reload(); };
 }
 
 function call(action, payload) {
   return fetch('/api/' + action, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...(payload || {}), playerId: myId }),
   }).then((r) => r.json()).then((r) => { if (r && r.error) showError(r.error); return r; });
 }
@@ -343,7 +312,6 @@ function connectStream() {
     render();
   };
 }
-
 async function boot() {
   if (!myId) {
     const r = await fetch('/api/new_id').then((x) => x.json());
@@ -357,17 +325,18 @@ boot();
 
 function render() {
   renderRoomBar();
-  renderMonumentBg();
   if (!state) return renderConnect();
+  const enteringResolve = state.phase === 'resolve' && prevPhase !== 'resolve';
+  prevPhase = state.phase;
   switch (state.phase) {
-    case 'lobby': return renderLobby();
-    case 'era_intro': return renderEraIntro();
-    case 'orders': return renderOrders();
-    case 'resolve': return renderResolve();
-    case 'desafio': return renderDesafio();
-    case 'simposio': return renderSimposio();
-    case 'fin': return renderFin();
-    default: return renderConnect();
+    case 'lobby': renderLobby(); break;
+    case 'era_intro': renderEraIntro(); break;
+    case 'orders': renderOrders(); break;
+    case 'resolve': renderResolve(); if (enteringResolve) setTimeout(runMapFx, 350); break;
+    case 'desafio': renderDesafio(); break;
+    case 'simposio': renderSimposio(); break;
+    case 'fin': renderFin(); break;
+    default: renderConnect();
   }
 }
 
@@ -389,14 +358,13 @@ function renderConnect() {
       </select>
       <p class="muted">¿Cuántos de ellos son bots (para testear solo/a)?</p>
       <select id="botsInput"></select>
-      <button id="createBtn">Crear sala nueva</button>
+      <button id="createBtn">⚔️ Crear sala nueva</button>
     </div>
     <div class="card">
       <h2>Unirte a una sala</h2>
       <input type="text" id="codeInput" placeholder="Código de sala (ej. LYNX)" maxlength="4" style="text-transform:uppercase">
-      <button class="secondary" id="joinBtn">Unirme</button>
-    </div>
-  `;
+      <button class="secondary" id="joinBtn">🏛️ Unirme</button>
+    </div>`;
   const maxPlayersInput = document.getElementById('maxPlayersInput');
   const botsInput = document.getElementById('botsInput');
   function refreshBotsOptions() {
@@ -412,20 +380,17 @@ function renderConnect() {
   }
   maxPlayersInput.onchange = refreshBotsOptions;
   refreshBotsOptions();
-
   document.getElementById('createBtn').onclick = () => {
-    joinedName = document.getElementById('nameInput').value || 'Jugador';
     call('create_room', {
-      name: joinedName,
+      name: document.getElementById('nameInput').value || 'Jugador',
       maxPlayers: parseInt(maxPlayersInput.value, 10),
       botsWanted: parseInt(botsInput.value, 10),
     });
   };
   document.getElementById('joinBtn').onclick = () => {
-    joinedName = document.getElementById('nameInput').value || 'Jugador';
     const code = document.getElementById('codeInput').value.trim().toUpperCase();
     if (!code) { showError('Escribe el código de la sala.'); return; }
-    call('join_room', { code, name: joinedName });
+    call('join_room', { code, name: document.getElementById('nameInput').value || 'Jugador' });
   };
 }
 
@@ -435,19 +400,18 @@ function renderLobby() {
   const leaderKeys = Object.keys(state.leaders);
   screen.innerHTML = `
     <div class="card center">
-      <div class="muted">Código de sala</div>
-      <h1 style="margin:4px 0;">${state.code}</h1>
+      <div class="muted" style="letter-spacing:2px; text-transform:uppercase; font-size:0.62rem;">Código de sala</div>
+      <h1 style="margin:4px 0; letter-spacing:10px; text-indent:10px;">${state.code}</h1>
       <div class="muted">Compártelo con tus jugadores humanos (los bots ya están dentro)</div>
     </div>
     <div class="card">
       <h2>Jugadores (${state.players.length}/${state.maxPlayers})</h2>
       <div class="players-list">
-        ${state.players.map((p, i) => {
+        ${state.players.map((p) => {
           const L = p.leader ? state.leaders[p.leader] : null;
-          return `
-          <div class="player-chip">
+          return `<div class="player-chip">
             <span class="portrait-row">
-              ${L ? portraitFrame(L, 'small') : `<span class="portrait" style="width:34px;height:34px;min-width:34px;font-size:1.1rem;border-color:${PLAYER_COLORS[i]}">${p.isBot ? '🤖' : '👤'}</span>`}
+              ${L ? portraitFrame(L, 'small') : `<span class="frame small"><span class="fallback">${p.isBot ? '🤖' : '👤'}</span></span>`}
               <span>${p.isBot ? '🤖 ' : ''}${p.name}${p.id === myId ? ' (tú)' : ''}</span>
             </span>
             <span class="muted">${L ? L.name : 'eligiendo líder…'}</span>
@@ -456,13 +420,13 @@ function renderLobby() {
       </div>
     </div>
     <div class="card">
-      <h2>❔ Cómo funciona (resumen rápido)</h2>
-      <p class="muted" style="line-height:1.5;">
-        👑 <b style="color:var(--text)">Líder:</b> eliges un personaje histórico con un bonus permanente propio.<br><br>
-        🗺️ <b style="color:var(--text)">Mapa:</b> cada partida genera un país nuevo de 24 provincias en 3 Eras. Las de Eras futuras se ven en niebla 🔒 hasta que llegue su momento.<br><br>
-        ⚔️ <b style="color:var(--text)">Tropas:</b> 3 clases — Infantería vence a Caballería, Caballería vence a las tropas A distancia, y éstas vencen a Infantería (+1 dado). Cada territorio tiene una clase de guarnición visible en el mapa.<br><br>
-        🎯 <b style="color:var(--text)">Atacar:</b> Asalto (conquistar), Asedio (desgastar sin arriesgar tanto) o Incursión (robar Recursos).<br><br>
-        🏆 <b style="color:var(--text)">Ganar:</b> por Dominación (controlar la mayoría del mapa), por Cultura (construir 3 Maravillas 🏛️ con Recursos 💰) o por Gloria al final de la Era III.
+      <h2>❔ Cómo funciona</h2>
+      <p class="muted" style="line-height:1.55;">
+        👑 <b style="color:var(--text)">Líder:</b> un personaje histórico con bonus permanente.<br>
+        🗺️ <b style="color:var(--text)">Mapa:</b> un continente nuevo cada partida — penínsulas, islas y rutas marítimas. La Era I empieza en el sur; el norte se abre con las Eras II y III (5 rondas por Era).<br>
+        ⚔️ <b style="color:var(--text)">Tropas:</b> Infantería vence a Caballería, que vence a A distancia, que vence a Infantería (+1 dado).<br>
+        🎯 <b style="color:var(--text)">8 órdenes:</b> Asalto, Asedio, Incursión, Reforzar, Levas, Matrimonio 💍, Personaje y Espiar.<br>
+        🏆 <b style="color:var(--text)">Ganar:</b> Dominación (mayoría del mapa), Cultura (3 Maravillas) o Gloria (fin de la Era III).
       </p>
     </div>
     <div class="card">
@@ -471,17 +435,17 @@ function renderLobby() {
         const L = state.leaders[k];
         const takenBy = state.players.find(p => p.leader === k && p.id !== myId);
         const mine = m && m.leader === k;
-        return `<button class="option-btn leader-card ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-leader="${k}">
+        return `<button class="leader-card ${mine ? 'chosen' : ''}" ${takenBy ? 'disabled' : ''} data-leader="${k}">
           ${portraitFrame(L, 'medium')}
           <span class="info">
-            <div class="name">${L.name} ${takenBy ? `(lo lleva ${takenBy.name})` : ''}</div>
-            <div class="ltitle" style="color:${mine ? '#1b1622' : L.color}">${L.title}</div>
-            <div class="desc">${L.desc}</div>
+            <span class="name">${L.name} ${takenBy ? `(lo lleva ${takenBy.name})` : ''}</span>
+            <span class="ltitle" style="color:${L.color}">${L.title}</span>
+            <span class="desc">${L.desc}</span>
           </span>
         </button>`;
       }).join('')}
     </div>
-    ${isHost ? `<button id="startBtn" ${state.players.length !== state.maxPlayers ? 'disabled' : ''}>${state.players.length !== state.maxPlayers ? `Esperando jugadores (${state.players.length}/${state.maxPlayers})` : 'Empezar partida'}</button>` : `<div class="muted center">Esperando a que el anfitrión empiece la partida…</div>`}
+    ${isHost ? `<button id="startBtn" ${state.players.length !== state.maxPlayers ? 'disabled' : ''}>${state.players.length !== state.maxPlayers ? `Esperando jugadores (${state.players.length}/${state.maxPlayers})` : '⚔️ Empezar partida'}</button>` : `<div class="muted center">Esperando a que el anfitrión empiece la partida…</div>`}
   `;
   document.querySelectorAll('[data-leader]').forEach(btn => {
     btn.onclick = () => call('choose_leader', { leader: btn.dataset.leader });
@@ -497,46 +461,49 @@ function renderEraIntro() {
       <p class="flavor">${state.eraInfo.flavor}</p>
     </div>
     ${renderBoard()}
+    ${renderMarriagePanel()}
     ${renderVictoryPanel()}
     ${renderTroopPanel()}
     ${renderWonderPanel()}
-    <button id="cont">Continuar</button>
-  `;
+    <button id="cont">Continuar</button>`;
   wirePanels();
   document.getElementById('cont').onclick = () => call('continue');
 }
+
+const ORDER_DEFS = [
+  { k: 'atacar_asalto', ic: '⚔️', n: 'Asalto', d: 'combate a dados; si arrasas, conquistas' },
+  { k: 'atacar_asedio', ic: '💣', n: 'Asedio', d: 'desgasta la guarnición sin arriesgar tanto' },
+  { k: 'atacar_incursion', ic: '🐎', n: 'Incursión', d: 'roba hasta 3 💰 a un rival vecino' },
+  { k: 'reforzar', ic: '🛡️', n: 'Reforzar', d: 'mueve reserva a una provincia tuya' },
+  { k: 'levas', ic: '🪙', n: 'Levas', d: 'paga 3 💰 → 2 tropas de reserva' },
+  { k: 'matrimonio', ic: '💍', n: 'Matrimonio', d: 'alianza dinástica con otro jugador' },
+  { k: 'reclutar', ic: '👑', n: 'Personaje', d: 'roba una carta histórica con efecto' },
+  { k: 'espiar', ic: '🕵️', n: 'Espiar', d: 've el ejército y la orden de un rival' },
+];
 
 function renderOrders() {
   const m = me();
   const submitted = state.ordersSubmitted.includes(myId);
   const myTerritories = Object.values(state.territories).filter(t => t.open && t.owner === myId);
   const otherPlayers = state.players.filter(p => p.id !== myId);
-
-  // Objetivos alcanzables: territorios libres en la 1ª ronda de la Era (se colonizan desde
-  // la reserva), o vecinos de un territorio tuyo con tropas de sobra.
   const isBootstrapRound = state.round === 1;
   const bootstrapTargets = isBootstrapRound
-    ? Object.values(state.territories).filter(t => t.open && t.era === state.era && !t.owner)
-    : [];
+    ? Object.values(state.territories).filter(t => t.open && t.era === state.era && !t.owner) : [];
   const reachableIds = new Set();
   myTerritories.forEach(t => {
-    if (t.armies > 1) {
-      t.neighbors.forEach(nId => {
-        const n = state.territories[nId];
-        if (n && n.open && n.owner !== myId) reachableIds.add(nId);
-      });
-    }
+    if (t.armies > 1) t.neighbors.forEach(nId => {
+      const n = state.territories[nId];
+      if (n && n.open && n.owner !== myId) reachableIds.add(nId);
+    });
   });
   const attackMap = new Map();
   bootstrapTargets.forEach(t => attackMap.set(t.id, t));
   reachableIds.forEach(id => attackMap.set(id, state.territories[id]));
   const attackable = [...attackMap.values()];
 
-  // Antes de reconstruir la pantalla, guardamos lo que estuvieras rellenando (si otro jugador
-  // envía su orden, esto se vuelve a renderizar entero y sin esto perderías tu selección).
-  const prevOrderType = document.getElementById('orderType')?.value;
+  // Conserva lo que estuvieras rellenando si la pantalla se re-renderiza.
+  const prevOrd = document.querySelector('.ord.sel')?.dataset.ord;
   const prevTargetTerr = document.getElementById('targetTerr')?.value;
-  const prevAttackMode = document.getElementById('attackMode')?.value;
   const prevFromTerr = document.getElementById('fromTerr')?.value;
   const prevAmount = document.getElementById('amount')?.value;
   const prevUnitClass = document.getElementById('unitClassSel')?.value;
@@ -545,34 +512,71 @@ function renderOrders() {
   screen.innerHTML = `
     ${renderBoard()}
     <div class="card">
-      <h2>Tus órdenes — Ronda ${state.round}</h2>
-      <p class="muted">Reserva disponible: ${m.reserve} tropa(s) · Recursos: ${m.resources || 0} 💰</p>
+      <h2>Tu orden · Ronda ${state.round} de ${state.roundsPerEra}</h2>
+      <p class="muted">Reserva: ${m.reserve} tropa(s) · 💰 ${m.resources || 0}</p>
+      ${state.you.spouseOrder ? `<div class="spouseLine">💍 Tu cónyuge (${state.you.spouse}) ya ha dado su orden: <b>${state.you.spouseOrder}</b></div>` : ''}
       ${submitted ? `<p class="center">Orden enviada. Esperando a los demás (${state.ordersSubmitted.length}/${state.players.length})…</p>` : `
-      <select id="orderType">
-        <option value="atacar">⚔️ Atacar / Colonizar</option>
-        <option value="reforzar">🛡️ Reforzar</option>
-        <option value="reclutar">👑 Reclutar Personaje</option>
-        <option value="espiar">🕵️ Espiar</option>
-      </select>
+      <div class="ordGrid">
+        ${ORDER_DEFS.map(o => `<div class="ord" data-ord="${o.k}"><div class="ic">${o.ic}</div><div class="tx"><b>${o.n}</b><span>${o.d}</span></div></div>`).join('')}
+      </div>
       <div id="orderFields"></div>
-      <button id="sendOrder">Enviar orden</button>
-      `}
+      <button id="sendOrder">Enviar orden</button>`}
     </div>
+    ${renderMarriagePanel()}
     ${state.you.characters.length ? `<div class="card"><h2>Tus Personajes</h2>${state.you.characters.map(c => `
-      <div class="char-item">
-        ${portraitFrame(c, 'small')}
+      <div class="char-item">${portraitFrame(c, 'small')}
         <span class="muted"><b style="color:var(--text)">${c.name}</b> — ${c.flavor}</span>
       </div>`).join('')}</div>` : ''}
     ${renderVictoryPanel()}
     ${renderTroopPanel()}
-    ${renderWonderPanel()}
-  `;
+    ${renderWonderPanel()}`;
   wirePanels();
   if (submitted) return;
+
+  let selectedOrd = prevOrd && ORDER_DEFS.some(o => o.k === prevOrd) ? prevOrd : 'atacar_asalto';
 
   function describeTarget(t) {
     const ownerTxt = t.owner ? nameFor(t.owner) : 'neutral';
     return `${t.icon || ''} ${t.name} (${ownerTxt}, ${t.armies} ${clsEraIcon(t.unitClass, t.era)} ${clsEraName(t.unitClass, t.era)})`;
+  }
+
+  function renderFields() {
+    document.querySelectorAll('.ord').forEach(el => el.classList.toggle('sel', el.dataset.ord === selectedOrd));
+    const fields = document.getElementById('orderFields');
+    const mode = selectedOrd.startsWith('atacar_') ? selectedOrd.split('_')[1] : null;
+
+    if (mode) {
+      const validTargets = mode === 'incursion'
+        ? attackable.filter(t => t.owner && (!isBootstrapRound || t.era !== state.era || t.owner))
+        : attackable;
+      if (!validTargets.length) {
+        fields.innerHTML = `<p class="muted">No tienes ningún objetivo alcanzable para esta orden.</p>`;
+        return;
+      }
+      fields.innerHTML = `
+        <select id="targetTerr">${validTargets.map(t => `<option value="${t.id}">${describeTarget(t)}</option>`).join('')}</select>
+        <div id="attackDetails"></div>`;
+      document.getElementById('targetTerr').onchange = renderAttackDetails;
+      renderAttackDetails();
+    } else if (selectedOrd === 'reforzar') {
+      fields.innerHTML = myTerritories.length ? `
+        <select id="targetTerr">${myTerritories.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} (${t.armies} ${clsEraIcon(t.unitClass, t.era)})</option>`).join('')}</select>
+        <input type="text" id="amount" placeholder="Tropas a añadir (máx ${m.reserve})">
+      ` : `<p class="muted">Aún no controlas ningún territorio.</p>`;
+    } else if (selectedOrd === 'levas') {
+      fields.innerHTML = `<p class="muted">Pagas ${state.levasCost} 💰 y sumas ${state.levasGain} tropas a tu reserva.${(m.resources || 0) < state.levasCost ? ` <b style="color:#ff9d8a">Ahora mismo no tienes ${state.levasCost} 💰.</b>` : ''}</p>`;
+    } else if (selectedOrd === 'matrimonio') {
+      const candidates = otherPlayers.filter(p => !p.married);
+      if (m.married) fields.innerHTML = `<p class="muted">Ya estás casado/a con ${nameFor(m.married)} 💍. Atacar a tu cónyuge rompería el matrimonio (¡escándalo!).</p>`;
+      else if (!candidates.length) fields.innerHTML = `<p class="muted">No queda nadie soltero a quien proponer matrimonio.</p>`;
+      else fields.innerHTML = `
+        <select id="targetPlayer">${candidates.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+        <p class="muted" style="font-size:0.7rem;">Si acepta: no podéis atacaros, +1 dado cuando defendéis, y veis vuestras órdenes. Todo el grupo brinda por los novios 🥂</p>`;
+    } else if (selectedOrd === 'espiar') {
+      fields.innerHTML = `<select id="targetPlayer">${otherPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>`;
+    } else {
+      fields.innerHTML = `<p class="muted">Robas 1 personaje al azar del mazo de esta Era.</p>`;
+    }
   }
 
   function renderAttackDetails() {
@@ -580,144 +584,87 @@ function renderOrders() {
     const wrap = document.getElementById('attackDetails');
     if (!targetEl || !wrap) return;
     const target = state.territories[targetEl.value];
+    const mode = selectedOrd.split('_')[1];
     const isBootstrap = isBootstrapRound && target.era === state.era && !target.owner;
     const sources = myTerritories.filter(t => t.armies > 1 && t.neighbors.includes(target.id));
 
     if (isBootstrap) {
-      // Colonización: eliges la CLASE con la que desembarcas desde tu reserva. Se sugiere la
-      // clase con ventaja sobre la guarnición local.
       const suggested = counterOf(target.unitClass);
       wrap.innerHTML = `
-        <p class="muted">Territorio libre — desembarcas desde tu reserva y eliges la clase de tropa. La guarnición local es ${clsEraName(target.unitClass, target.era)} ${clsEraIcon(target.unitClass, target.era)}; la clase con ventaja contra ella es ${clsEraName(suggested, state.era)} ${clsEraIcon(suggested, state.era)}.</p>
+        <p class="muted">Territorio libre — desembarcas desde tu reserva eligiendo la clase. La guarnición local es ${clsEraName(target.unitClass, target.era)} ${clsEraIcon(target.unitClass, target.era)}; la clase con ventaja es ${clsEraName(suggested, state.era)} ${clsEraIcon(suggested, state.era)}.</p>
         <select id="unitClassSel">
           ${CLASS_KEYS.map(k => `<option value="${k}" ${k === suggested ? 'selected' : ''}>${clsEraIcon(k, state.era)} ${clsEraName(k, state.era)} (${clsDef(k).clase})${state.troopClasses[k].beats === target.unitClass ? ' — ¡ventaja!' : ''}</option>`).join('')}
         </select>
-        <input type="text" id="amount" placeholder="Tropas desde tu reserva (máx ${m.reserve})">
-      `;
+        <input type="text" id="amount" placeholder="Tropas desde tu reserva (máx ${m.reserve})">`;
       return;
     }
-
     if (!sources.length) {
       wrap.innerHTML = `<p class="muted">No tienes ningún territorio con tropas de sobra junto a ${target.name}.</p>`;
       return;
     }
-
-    const modeEl = document.getElementById('attackMode');
-    const mode = modeEl ? modeEl.value : 'asalto';
-    const canRaid = !!target.owner;
     wrap.innerHTML = `
-      <select id="attackMode">
-        <option value="asalto">⚔️ Asalto — combate total: si aniquilas la guarnición, conquistas el territorio</option>
-        <option value="asedio">💣 Asedio — duelo a 1 dado: si ganas, el defensor pierde 1 tropa (sin conquistar; arriesgas 1)</option>
-        ${canRaid ? `<option value="incursion">🐎 Incursión — duelo a 1 dado: si ganas, robas hasta 3 Recursos 💰 (sin conquistar)</option>` : ''}
-      </select>
-      <select id="fromTerr">${sources.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} — ${t.armies} ${clsEraIcon(t.unitClass, t.era)} ${clsEraName(t.unitClass, t.era)}${state.troopClasses[t.unitClass].beats === target.unitClass ? ' (¡ventaja de clase!)' : (state.troopClasses[target.unitClass].beats === t.unitClass ? ' (clase en desventaja)' : '')}</option>`).join('')}</select>
-      <div id="amountWrap"></div>
-    `;
-    const modeSel = document.getElementById('attackMode');
-    if (mode && [...modeSel.options].some(o => o.value === mode)) modeSel.value = mode;
-    function refreshAmount() {
-      const wrapA = document.getElementById('amountWrap');
-      if (modeSel.value === 'asalto') {
-        wrapA.innerHTML = `<input type="text" id="amount" placeholder="Tropas a enviar (déjate al menos 1 en el origen)">`;
-      } else {
-        wrapA.innerHTML = `<p class="muted">${modeSel.value === 'asedio' ? 'El asedio no mueve tropas: es un duelo de desgaste a distancia.' : 'La incursión no mueve tropas: es un golpe rápido a la bolsa del rival.'}</p>`;
-      }
-    }
-    modeSel.onchange = refreshAmount;
-    refreshAmount();
+      <select id="fromTerr">${sources.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} — ${t.armies} ${clsEraIcon(t.unitClass, t.era)} ${clsEraName(t.unitClass, t.era)}${state.troopClasses[t.unitClass].beats === target.unitClass ? ' (¡ventaja de clase!)' : (state.troopClasses[target.unitClass].beats === t.unitClass ? ' (en desventaja)' : '')}</option>`).join('')}</select>
+      ${mode === 'asalto' ? `<input type="text" id="amount" placeholder="Tropas a enviar (déjate al menos 1 en el origen)">`
+        : `<p class="muted">${mode === 'asedio' ? 'El asedio no mueve tropas: duelo a 1 dado; el perdedor pierde 1 tropa.' : 'La incursión no mueve tropas: si ganas el duelo, robas hasta 3 💰.'}</p>`}`;
   }
 
-  function renderFields() {
-    const type = document.getElementById('orderType').value;
-    const fields = document.getElementById('orderFields');
-    if (type === 'atacar') {
-      if (!attackable.length) {
-        fields.innerHTML = `<p class="muted">No tienes ningún objetivo alcanzable este turno (te falta un territorio vecino con tropas de sobra).</p>`;
-        return;
-      }
-      fields.innerHTML = `
-        <select id="targetTerr">${attackable.map(t => `<option value="${t.id}">${describeTarget(t)}</option>`).join('')}</select>
-        <div id="attackDetails"></div>
-      `;
-      document.getElementById('targetTerr').onchange = renderAttackDetails;
-      renderAttackDetails();
-    } else if (type === 'reforzar') {
-      fields.innerHTML = myTerritories.length ? `
-        <select id="targetTerr">${myTerritories.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name} (${t.armies} ${clsEraIcon(t.unitClass, t.era)})</option>`).join('')}</select>
-        <input type="text" id="amount" placeholder="Tropas a añadir (máx ${m.reserve})">
-      ` : `<p class="muted">Aún no controlas ningún territorio.</p>`;
-    } else if (type === 'espiar') {
-      fields.innerHTML = `<select id="targetPlayer">${otherPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>`;
-    } else {
-      fields.innerHTML = `<p class="muted">Robas 1 personaje al azar del mazo de esta Era.</p>`;
-    }
-  }
-  document.getElementById('orderType').onchange = renderFields;
-  if (prevOrderType && [...document.getElementById('orderType').options].some(o => o.value === prevOrderType)) {
-    document.getElementById('orderType').value = prevOrderType;
-  }
+  document.querySelectorAll('.ord').forEach(el => {
+    el.onclick = () => { selectedOrd = el.dataset.ord; renderFields(); };
+  });
   renderFields();
 
-  // Restauramos las selecciones más finas ahora que existen los campos correspondientes.
-  const typeNow = document.getElementById('orderType').value;
-  if (typeNow === 'atacar') {
-    const targetSel = document.getElementById('targetTerr');
-    if (targetSel && prevTargetTerr && [...targetSel.options].some(o => o.value === prevTargetTerr)) {
-      targetSel.value = prevTargetTerr;
-      renderAttackDetails();
-      const modeSel = document.getElementById('attackMode');
-      if (modeSel && prevAttackMode && [...modeSel.options].some(o => o.value === prevAttackMode)) {
-        modeSel.value = prevAttackMode;
-        modeSel.onchange();
-      }
-      const fromSel = document.getElementById('fromTerr');
-      if (fromSel && prevFromTerr && [...fromSel.options].some(o => o.value === prevFromTerr)) fromSel.value = prevFromTerr;
-      const clsSel = document.getElementById('unitClassSel');
-      if (clsSel && prevUnitClass && [...clsSel.options].some(o => o.value === prevUnitClass)) clsSel.value = prevUnitClass;
-    }
-  } else if (typeNow === 'reforzar') {
-    const targetSel = document.getElementById('targetTerr');
-    if (targetSel && prevTargetTerr && [...targetSel.options].some(o => o.value === prevTargetTerr)) targetSel.value = prevTargetTerr;
-  } else if (typeNow === 'espiar') {
-    const targetSel = document.getElementById('targetPlayer');
-    if (targetSel && prevTargetPlayer) targetSel.value = prevTargetPlayer;
+  // Restaurar selecciones finas
+  const targetSel = document.getElementById('targetTerr');
+  if (targetSel && prevTargetTerr && [...targetSel.options].some(o => o.value === prevTargetTerr)) {
+    targetSel.value = prevTargetTerr;
+    if (selectedOrd.startsWith('atacar_')) renderAttackDetails();
   }
+  const fromSel = document.getElementById('fromTerr');
+  if (fromSel && prevFromTerr && [...fromSel.options].some(o => o.value === prevFromTerr)) fromSel.value = prevFromTerr;
+  const clsSel = document.getElementById('unitClassSel');
+  if (clsSel && prevUnitClass && [...clsSel.options].some(o => o.value === prevUnitClass)) clsSel.value = prevUnitClass;
+  const tpSel = document.getElementById('targetPlayer');
+  if (tpSel && prevTargetPlayer && [...tpSel.options].some(o => o.value === prevTargetPlayer)) tpSel.value = prevTargetPlayer;
   const amountElRestore = document.getElementById('amount');
   if (amountElRestore && prevAmount) amountElRestore.value = prevAmount;
 
   document.getElementById('sendOrder').onclick = () => {
-    const type = document.getElementById('orderType').value;
-    let order = { type };
-    if (type === 'atacar') {
+    let order;
+    if (selectedOrd.startsWith('atacar_')) {
+      const mode = selectedOrd.split('_')[1];
       const targetEl = document.getElementById('targetTerr');
       if (!targetEl) { showError('No tienes ningún objetivo alcanzable.'); return; }
-      order.to = targetEl.value;
+      order = { type: 'atacar', mode, to: targetEl.value };
       const target = state.territories[order.to];
       const isBootstrap = isBootstrapRound && target.era === state.era && !target.owner;
       if (isBootstrap) {
         order.mode = 'asalto';
-        const clsSel = document.getElementById('unitClassSel');
-        if (clsSel) order.unitClass = clsSel.value;
+        const cSel = document.getElementById('unitClassSel');
+        if (cSel) order.unitClass = cSel.value;
         const amountEl = document.getElementById('amount');
         order.amount = amountEl ? (parseInt(amountEl.value) || 0) : 0;
       } else {
-        const modeSel = document.getElementById('attackMode');
         const fromEl = document.getElementById('fromTerr');
         if (!fromEl) { showError('Elige un territorio de origen con tropas de sobra.'); return; }
-        order.mode = modeSel ? modeSel.value : 'asalto';
         order.from = fromEl.value;
-        if (order.mode === 'asalto') {
+        if (mode === 'asalto') {
           const amountEl = document.getElementById('amount');
           order.amount = amountEl ? (parseInt(amountEl.value) || 0) : 0;
         }
       }
-    } else if (type === 'reforzar') {
+    } else if (selectedOrd === 'reforzar') {
       if (!myTerritories.length) return;
-      order.territoryId = document.getElementById('targetTerr').value;
-      order.amount = parseInt(document.getElementById('amount').value) || 0;
-    } else if (type === 'espiar') {
-      order.targetId = document.getElementById('targetPlayer').value;
+      order = { type: 'reforzar', territoryId: document.getElementById('targetTerr').value, amount: parseInt(document.getElementById('amount')?.value) || 0 };
+    } else if (selectedOrd === 'levas') {
+      order = { type: 'levas' };
+    } else if (selectedOrd === 'matrimonio') {
+      const tp = document.getElementById('targetPlayer');
+      if (!tp) { showError('No hay a quién proponer matrimonio.'); return; }
+      order = { type: 'matrimonio', targetId: tp.value };
+    } else if (selectedOrd === 'espiar') {
+      order = { type: 'espiar', targetId: document.getElementById('targetPlayer').value };
+    } else {
+      order = { type: 'reclutar' };
     }
     call('submit_order', { order });
   };
@@ -725,19 +672,18 @@ function renderOrders() {
 
 function renderResolve() {
   const isHost = state.players[0] && state.players[0].id === myId;
-  const hasCombat = (state.resolveLog || []).some(l => l.includes('ataca') || l.includes('conquista') || l.includes('asedia') || l.includes('incursión'));
   screen.innerHTML = `
+    ${(state.battles || []).map((b, i) => renderBattleCard(b, i)).join('')}
     <div class="card">
-      <h2>Resultado de la Ronda ${state.round}</h2>
-      ${hasCombat ? `<div class="dice-row"><div class="die">⚔️</div><div class="die">🎲</div><div class="die">🎲</div></div>` : ''}
+      <h2>Registro de la Ronda ${state.round}</h2>
       <div class="log">${(state.resolveLog || []).map(l => `<div>${l}</div>`).join('')}</div>
     </div>
     ${renderBoard()}
+    ${renderMarriagePanel()}
     ${renderVictoryPanel()}
     ${renderTroopPanel()}
     ${renderWonderPanel()}
-    ${isHost ? `<button id="cont">Continuar</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}
-  `;
+    ${isHost ? `<button id="cont">Continuar</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}`;
   wirePanels();
   const btn = document.getElementById('cont');
   if (btn) btn.onclick = () => call('continue');
@@ -749,18 +695,17 @@ function renderDesafio() {
   let optionsHtml = '';
   if (d.tipo === 'votacion') {
     const others = state.players.filter(p => p.id !== myId);
-    optionsHtml = others.map(p => `<button class="option-btn" data-c="${p.id}" ${responded ? 'disabled' : ''}>${p.name}</button>`).join('');
+    optionsHtml = others.map(p => `<button class="secondary" data-c="${p.id}" ${responded ? 'disabled' : ''}>${p.name}</button>`).join('');
   } else {
-    optionsHtml = d.opciones.map((opt, i) => `<button class="option-btn" data-c="${i}" ${responded ? 'disabled' : ''}>${opt}</button>`).join('');
+    optionsHtml = d.opciones.map((opt, i) => `<button class="secondary" data-c="${i}" ${responded ? 'disabled' : ''}>${opt}</button>`).join('');
   }
   screen.innerHTML = `
     <div class="card">
       <h2>🥂 Desafío: ${d.titulo}</h2>
-      <p>${d.texto}</p>
+      <p style="line-height:1.5;">${d.texto}</p>
       ${optionsHtml}
       <p class="muted">Respondido: ${state.desafioResponses.length}/${state.players.length}</p>
-    </div>
-  `;
+    </div>`;
   if (!responded) {
     document.querySelectorAll('[data-c]').forEach(btn => {
       btn.onclick = () => {
@@ -781,10 +726,9 @@ function renderSimposio() {
     </div>
     <div class="card">
       <h2>Gloria total</h2>
-      ${[...state.players].sort((a,b)=>b.gloria-a.gloria).map(p => `<div class="rank"><span>${p.name}</span><span>${p.gloria} 🏆</span></div>`).join('')}
+      ${[...state.players].sort((a, b) => b.gloria - a.gloria).map(p => `<div class="rank"><span>${p.name}${p.married ? ' 💍' : ''}</span><span>${p.gloria} 🏆</span></div>`).join('')}
     </div>
-    ${isHost ? `<button id="cont">${state.era < 3 ? 'Comenzar siguiente Era' : 'Ver resultado final'}</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}
-  `;
+    ${isHost ? `<button id="cont">${state.era < 3 ? 'Comenzar siguiente Era' : 'Ver resultado final'}</button>` : `<div class="muted center">Esperando al anfitrión…</div>`}`;
   const btn = document.getElementById('cont');
   if (btn) btn.onclick = () => call('continue');
 }
@@ -795,7 +739,7 @@ function renderFin() {
   screen.innerHTML = `
     <div class="card center">
       <h2>🏆 Fin de la partida</h2>
-      ${v ? `<p style="font-weight:700; line-height:1.45;">${v.detalle}</p>` : ''}
+      ${v ? `<div class="ribbonWrap"><span class="ribbon">${v.detalle}</span></div><div style="height:10px"></div>` : ''}
       ${state.finalResult.map((r, i) => `
         <div class="rank ${i === 0 ? 'first' : ''}">
           <span>${i === 0 ? '👑 ' : ''}${r.name}</span>
@@ -803,29 +747,36 @@ function renderFin() {
         </div>`).join('')}
       <p class="muted" style="margin-top:12px;">¡Brindad por quien ha ganado y otra por quien ha perdido!</p>
     </div>
-    ${isHost ? `<button id="restartFromFin">🔄 Jugar otra vez con el mismo grupo (mapa nuevo)</button>` : `<div class="muted center">Cuando el anfitrión reinicie, seguiréis todos en la misma sala.</div>`}
-  `;
+    ${isHost ? `<button id="restartFromFin">🔄 Jugar otra vez con el mismo grupo (mapa nuevo)</button>` : `<div class="muted center">Cuando el anfitrión reinicie, seguiréis todos en la misma sala.</div>`}`;
   const btn = document.getElementById('restartFromFin');
   if (btn) btn.onclick = () => call('restart_room');
 }
 
 // ---------------------------------------------------------------------------
-// Paneles compartidos: tablero, vías de victoria, tropas/mejoras y maravillas
+// TABLERO: HUD + mapa continental + fichas
 // ---------------------------------------------------------------------------
-
 function renderBoard() {
+  const m = me();
   const eras = [1, 2, 3];
   const allTerrs = Object.values(state.territories);
   const openTerrs = allTerrs.filter(t => t.open);
-  return `<div class="card"><h2>Tablero</h2>
-    ${renderMapSvg(allTerrs)}
+  const myWonders = allTerrs.filter(t => t.wonder && t.owner === myId).length;
+  const dots = Array.from({ length: state.roundsPerEra || 5 }, (_, i) =>
+    `<span class="rd ${state.round && i < state.round ? 'done' : ''}"></span>`).join('');
+  return `<div class="card" style="padding:8px;">
+    <div class="hud" style="margin-bottom:6px; padding:4px 8px;">
+      <div class="res"><span>💰 <b>${m ? m.resources || 0 : 0}</b></span><span>🏛️ <b>${myWonders}</b>/${state.wondersToWin}</span><span>🏆 <b>${m ? m.gloria : 0}</b></span></div>
+      <div class="roundTrack"><span class="lab">${ERA_LABELS[state.era]}</span>${dots}</div>
+    </div>
+    <div class="mapFrame">${renderMapSvg(allTerrs)}</div>
+    <div class="map-legend">🟡 <b>dorado</b> = tuyo · 🔴 <b>rojo</b> = atacable · ☁️ <b>niebla</b> = Era futura · ⚓ línea discontinua = ruta marítima · 💍 = casados</div>
     ${eras.map(e => {
       const terrs = openTerrs.filter(t => t.era === e);
       if (!terrs.length) return '';
       return `<div class="era-label">${ERA_LABELS[e]}</div>
       <div class="territories" style="margin-bottom:8px;">
         ${terrs.map(t => `
-          <div class="territory" id="terr-${t.id}" style="border-color:${t.owner ? colorFor(t.owner) : '#4a3f5c'}">
+          <div class="territory" id="terr-${t.id}" style="border-color:${t.owner ? colorFor(t.owner) : '#3a3550'}">
             <b>${t.wonder ? t.wonder.icon + ' ' : ''}${t.icon || ''} ${t.name}</b><br>
             <span class="muted">${t.owner ? nameFor(t.owner) : 'Neutral'}${t.owner === myId ? ' · tuyo' : ''} · ${clsEraName(t.unitClass, t.era)}</span><br>
             ${unitBadge(t)}
@@ -836,73 +787,336 @@ function renderBoard() {
   </div>`;
 }
 
-// Paleta de "terreno" para territorios SIN dueño — apagada y terrosa.
-const TERRAIN_PALETTE = ['#3d5a4a', '#4a4530', '#33465c', '#4a3d38', '#3f4a33', '#3a3550'];
-function hashStr(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
-function terrainColor(id) { return TERRAIN_PALETTE[hashStr(id) % TERRAIN_PALETTE.length]; }
+const TERRA_FILL = { grass: '#5e7c46', plains: '#94975a', forest: '#4a6a3c', hills: '#6f7a50', mount: '#77755c', desert: '#b7a26a' };
 
-// MAPA POLÍTICO: cada territorio llega del servidor como un polígono suave (t.path, un path
-// SVG ya calculado — su celda de Voronoi recortada a la masa de tierra). Aquí solo se pinta:
-// mar de fondo, una "sotabase" de tierra continua (el mismo polígono con borde gordo, que
-// funde las provincias en un único país con costa), el relleno de cada provincia (niebla si
-// su Era no ha empezado, terreno neutro, o el color del dueño) y las fronteras: doradas las
-// tuyas, rojas las que puedes atacar, finas y oscuras el resto.
+function doodads(t) {
+  if (!t.open) return '';
+  const h = hashStr(t.id);
+  const cx = t.x, cy = t.y;
+  function tree(x, y, sc) { return `<g transform="translate(${x} ${y}) scale(${sc})">
+    <ellipse cx="1" cy="5" rx="5" ry="1.4" fill="#000" opacity="0.28"/>
+    <rect x="-0.7" y="1.4" width="1.4" height="3.6" fill="#43331f"/>
+    <circle cx="-2" cy="-1" r="4" fill="#375231"/><circle cx="2.4" cy="-2.4" r="4.4" fill="#3f5c37"/>
+    <circle cx="0.6" cy="1" r="3.6" fill="#476841"/></g>`; }
+  function mount(x, y, sc) { return `<g transform="translate(${x} ${y}) scale(${sc})">
+    <ellipse cx="1" cy="4.4" rx="7.4" ry="1.6" fill="#000" opacity="0.22"/>
+    <path d="M-8 4 L-1 -7 L6 4 Z" fill="#83816c" stroke="#4c4a3a" stroke-width="0.6"/>
+    <path d="M-1 -7 L6 4 L1.4 4 Z" fill="#5d5b49"/>
+    <path d="M-3.2 -3.4 L-1 -7 L1.1 -3.6 L-0.4 -2.4 Z" fill="#eef0e6"/></g>`; }
+  function hill(x, y, sc) { return `<g transform="translate(${x} ${y}) scale(${sc})">
+    <path d="M-8 2 Q 0 -6 8 2 Z" fill="#67714a" stroke="#454d31" stroke-width="0.5"/>
+    <path d="M0 -2.2 Q 4 -4.6 8 2 L 2 2 Z" fill="#535c3b"/></g>`; }
+  function dune(x, y, sc) { return `<g transform="translate(${x} ${y}) scale(${sc})" fill="none" stroke-linecap="round">
+    <path d="M-7 0 Q -2 -4.4 3 0" stroke="#8f7c4d" stroke-width="1.5"/>
+    <path d="M-1 3 Q 4 -1 9 3" stroke="#9d8a58" stroke-width="1.3"/></g>`; }
+  const F = { forest: tree, grass: hill, mount: mount, hills: hill, plains: hill, desert: dune }[t.terrain] || hill;
+  const dens = t.terrain === 'forest' ? 4 : t.terrain === 'mount' ? 3 : 2;
+  const offs = [[-22, -14], [18, -18], [-14, 14], [22, 10], [0, -24], [-28, 2]];
+  let o = '';
+  for (let i = 0; i < dens; i++) {
+    const [dx, dy] = offs[(h + i * 5) % offs.length];
+    o += F(cx + dx + ((h >> (i + 2)) % 5) - 2, cy + dy + ((h >> (i + 4)) % 4) - 2, 0.75 + ((h >> i) % 3) * 0.14);
+  }
+  return o;
+}
+
+// Unidades militares de perfil (falange / arqueros / caballería) con estandarte.
+// Arte de tropas idéntico al de la propuesta v6 aprobada: hoplita de perfil con casco
+// corintio y cimera, hoplón de bronce con aro del color del jugador; arquero tensando
+// el arco con carcaj a la espalda; jinete montado sobre caballo de silueta realista.
+function soldierInf(col, shade) {
+  const armor = shade ? '#565b66' : '#666c78', bronze = shade ? '#8a6a33' : '#a3783f';
+  return `<g stroke-linejoin="round">
+    <line x1="1.4" y1="9.6" x2="0.2" y2="4" stroke="#8a6d4a" stroke-width="1.6"/>
+    <line x1="4.6" y1="9.6" x2="3.4" y2="4" stroke="#8a6d4a" stroke-width="1.6"/>
+    <path d="M0.6 9.6 l-1.8 0.9 l3 0 Z" fill="#241d12"/><path d="M3.8 9.6 l-1.8 0.9 l3 0 Z" fill="#241d12"/>
+    <path d="M-0.6 4.6 L-0.6 -3.2 L4.4 -3.2 L4.4 4.6 Z" fill="${armor}" stroke="#191510" stroke-width="0.5"/>
+    <path d="M-2 -8.4 L4 -8.4 L5 -3.2 L-1.4 -3.2 Z" fill="${armor}" stroke="#191510" stroke-width="0.5"/>
+    <circle cx="2.2" cy="-9.4" r="2.5" fill="#c39d68" stroke="#191510" stroke-width="0.5"/>
+    <path d="M-0.4 -9.6 Q-0.6 -12.4 2.2 -12.4 Q5 -12.4 5 -9.6 L5 -8.2 L3.4 -8.2 L3.4 -9 L1 -9 L1 -7.4 L-0.4 -7.4 Z"
+      fill="${bronze}" stroke="#191510" stroke-width="0.5"/>
+    <path d="M-0.8 -12 Q2.2 -15.4 5.4 -12 L4.6 -10.8 Q2.2 -13.4 0 -10.8 Z" fill="${col}" stroke="#191510" stroke-width="0.4"/>
+    <line x1="-4.4" y1="2.6" x2="9.6" y2="-13.4" stroke="#6e5731" stroke-width="1"/>
+    <path d="M9.6 -13.4 l2.6 -3 l-0.8 3.9 Z" fill="#cfc8b4" stroke="#191510" stroke-width="0.3"/>
+    <ellipse cx="-1.6" cy="-1" rx="4.6" ry="6.4" fill="${bronze}" stroke="#191510" stroke-width="0.7"/>
+    <ellipse cx="-1.6" cy="-1" rx="4.6" ry="6.4" fill="none" stroke="${col}" stroke-width="1.1"/>
+    <ellipse cx="-1.6" cy="-1" rx="2" ry="3" fill="none" stroke="#191510" stroke-width="0.4" opacity="0.6"/>
+    <ellipse cx="-3" cy="-3" rx="1.2" ry="2" fill="#f2e5bd" opacity="0.35"/></g>`;
+}
+function soldierArq(col, shade) {
+  const tunic = shade ? '#4c4a3c' : '#5a5847';
+  return `<g stroke-linejoin="round">
+    <line x1="0.6" y1="9.6" x2="0" y2="3.6" stroke="#8a6d4a" stroke-width="1.5"/>
+    <line x1="3.6" y1="9.6" x2="2.8" y2="3.6" stroke="#8a6d4a" stroke-width="1.5"/>
+    <path d="M-0.2 9.6 l-1.7 0.9 l2.9 0 Z" fill="#241d12"/><path d="M2.8 9.6 l-1.7 0.9 l2.9 0 Z" fill="#241d12"/>
+    <path d="M-1.2 4 L-1.2 -3.4 L3.6 -3.4 L3.6 4 Z" fill="${tunic}" stroke="#191510" stroke-width="0.5"/>
+    <path d="M-2.4 -8 L3 -8 L4 -3.4 L-1.8 -3.4 Z" fill="${tunic}" stroke="#191510" stroke-width="0.5"/>
+    <rect x="-4.2" y="-8.6" width="2.2" height="7" rx="1" transform="rotate(14 -3 -5)" fill="#6b4f2c" stroke="#191510" stroke-width="0.4"/>
+    <circle cx="1.4" cy="-9" r="2.4" fill="#c39d68" stroke="#191510" stroke-width="0.5"/>
+    <path d="M-1 -9.4 Q-0.6 -11.8 1.6 -11.8 Q3.8 -11.6 3.8 -9.4 L3.4 -8.4 L-0.6 -8.4 Z" fill="#7a5c33" stroke="#191510" stroke-width="0.4"/>
+    <path d="M7.4 -12.4 Q11.6 -4.6 7.4 3.4" fill="none" stroke="#8a6c39" stroke-width="1.2"/>
+    <line x1="7.4" y1="-12.4" x2="7.4" y2="3.4" stroke="#ded4b5" stroke-width="0.45"/>
+    <line x1="2" y1="-4.6" x2="9.4" y2="-4.6" stroke="#40331d" stroke-width="0.8"/>
+    <path d="M9.4 -4.6 l2.4 0 l-1.6 -1 l0 2 Z" fill="#cfc8b4"/>
+    <path d="M2 -4.6 l-1.4 -0.9 l0 1.8 Z" fill="${col}"/></g>`;
+}
+function soldierCab(col, shade) {
+  const horse = shade ? '#5e452c' : '#6f5334', mane = '#3c2c19';
+  return `<g stroke-linejoin="round">
+    <ellipse cx="0.6" cy="9.4" rx="10.6" ry="1.6" fill="#000" opacity="0.3"/>
+    <path d="M-9.6 -1.6 Q-10.4 -6.4 -5.4 -7 L3.2 -7.3 Q6.2 -7.4 7.6 -5.2 L8.6 -8.6 Q9.2 -10.8 10.8 -10.2 L12.8 -8 Q14 -6.8 12.6 -5.6 L10.6 -4.2 Q10.2 -1.4 7.2 -0.2 L7 5.2 Q7 6.4 6 6.4 L5.2 6.4 Q4.4 6.4 4.5 5.2 L4.4 0.4 L-4.4 0.6 L-5.4 5.4 Q-5.6 6.6 -6.6 6.4 L-7.4 6.4 Q-8.3 6.2 -8 5 L-7 -0.2 Q-9.2 -0.2 -9.6 -1.6 Z"
+      fill="${horse}" stroke="#241708" stroke-width="0.6"/>
+    <path d="M-9.6 -2 Q-12.4 -0.6 -11.8 3.4 L-10.6 3 Q-11 0 -9 -1 Z" fill="${mane}"/>
+    <path d="M-5 -7 Q-2 -8.6 2 -7.3 L2 -6 Q-2 -7.4 -5 -6.2 Z" fill="${mane}"/>
+    <path d="M9.4 -9.4 l0.8 -1.6 l0.8 1.7 Z" fill="${mane}"/>
+    <path d="M-0.8 -6.6 L-0.8 -10.4 Q1.4 -12 3.2 -10.4 L3.2 -6.8 Z" fill="#666c78" stroke="#191510" stroke-width="0.5"/>
+    <circle cx="1.4" cy="-11.6" r="2" fill="#c39d68" stroke="#191510" stroke-width="0.5"/>
+    <path d="M-0.4 -11.8 Q0.2 -13.8 2 -13.6 Q3.6 -13.6 3.4 -11.6 L3 -10.8 L-0.2 -10.8 Z" fill="#7d838f" stroke="#191510" stroke-width="0.4"/>
+    <path d="M3.4 -13.2 Q4.8 -14.6 4.4 -16" fill="none" stroke="${col}" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="6.6" y1="-16.6" x2="0.4" y2="-2.4" stroke="#6e5731" stroke-width="0.9"/>
+    <path d="M6.6 -16.6 l2 -2.4 l-0.5 3.1 Z" fill="#cfc8b4"/>
+    <rect x="-3.9" y="-9.8" width="2" height="5" rx="0.8" fill="${col}" stroke="#191510" stroke-width="0.4"/></g>`;
+}
+function standard(col, glyph, n, married) {
+  return `<g transform="translate(0 -21)">
+    <line x1="0" y1="10" x2="0" y2="-8" stroke="#33291a" stroke-width="1.1"/>
+    <circle cx="0" cy="-8.8" r="1.2" fill="#c9a44f"/>
+    <path d="M0.6 -7.6 L15.6 -7.6 L15.6 3 L8.1 1 L0.6 3 Z" fill="#171c27" stroke="${col}" stroke-width="1.1"/>
+    <text x="5.4" y="-1" text-anchor="middle" font-size="6.4">${glyph}</text>
+    <text x="12" y="-1" text-anchor="middle" font-size="6.2" font-weight="bold" fill="#fff">${n}</text>
+    ${married ? '<text x="19.6" y="-5.4" text-anchor="middle" font-size="6">💍</text>' : ''}
+  </g>`;
+}
+function unitArt(cls, col, n) {
+  const maker = { inf: soldierInf, arq: soldierArq, cab: soldierCab }[cls];
+  const front = cls === 'cab' ? [[-6, 2]] : [[-8, 2], [2, 3]];
+  const back = cls === 'cab' ? [[6, -4]] : [[-2, -4], [8, -3]];
+  let figs = '';
+  back.slice(0, Math.max(0, Math.min(back.length, n - front.length))).forEach(([dx, dy]) => {
+    figs += `<g transform="translate(${dx} ${dy}) scale(0.92)">${maker(col, true)}</g>`;
+  });
+  front.slice(0, Math.min(front.length, n)).forEach(([dx, dy]) => {
+    figs += `<g transform="translate(${dx} ${dy})">${maker(col, false)}</g>`;
+  });
+  return figs;
+}
+function unitGroup(t) {
+  if (!t.armies) return '';
+  const owner = t.owner ? state.players.find(p => p.id === t.owner) : null;
+  const col = owner ? colorFor(owner.id) : '#9a9aa6';
+  const glyph = { inf: '🛡️', cab: '🐎', arq: '🏹' }[t.unitClass];
+  return `<g transform="translate(${t.x} ${t.y - 6})">
+    <g class="unitG" style="animation-delay:${(hashStr(t.id) % 20) / 10}s">
+      <ellipse cx="1" cy="12" rx="16" ry="3.4" fill="#000" opacity="0.2"/>
+      ${unitArt(t.unitClass, col, t.armies)}
+      ${standard(col, glyph, t.armies, owner && owner.married)}
+    </g>
+  </g>`;
+}
+
 function renderMapSvg(allTerrs) {
   if (!allTerrs.length) return '';
   const mine = new Set(allTerrs.filter(t => t.open && t.owner === myId).map(t => t.id));
   const threatened = new Set();
   allTerrs.forEach(t => {
-    if (t.open && mine.has(t.id)) {
-      (t.neighbors || []).forEach(nId => {
-        const n = state.territories[nId];
-        if (n && n.open && !mine.has(nId)) threatened.add(nId);
-      });
-    }
+    if (t.open && mine.has(t.id)) (t.neighbors || []).forEach(nId => {
+      const n = state.territories[nId];
+      if (n && n.open && !mine.has(nId)) threatened.add(nId);
+    });
   });
+  const byId = {}; allTerrs.forEach(t => byId[t.id] = t);
 
-  const underlay = allTerrs.map(t =>
-    `<path d="${t.path}" fill="#3b3450" stroke="#3b3450" stroke-width="10" stroke-linejoin="round" />`).join('');
+  let out = `<defs>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="4"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0"/></filter>
+    <filter id="waterTex"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="8"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.75  0 0 0 0 0.85  0 0 0 0 0.95  0 0 0 0.05 0"/></filter>
+    <linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17364d"/><stop offset="0.55" stop-color="#122f46"/><stop offset="1" stop-color="#0c2133"/></linearGradient>
+    <radialGradient id="sunL" cx="0.3" cy="0.18" r="0.95">
+      <stop offset="0" stop-color="#fff3c8" stop-opacity="0.14"/><stop offset="0.5" stop-color="#fff3c8" stop-opacity="0.03"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.2"/></radialGradient>
+    <radialGradient id="vign" cx="0.5" cy="0.45" r="0.75">
+      <stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></radialGradient>
+    <linearGradient id="fogG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5e6875"/><stop offset="1" stop-color="#454d5e"/></linearGradient>
+  </defs>`;
 
-  const fills = allTerrs.map(t => {
-    let fill, op;
-    if (!t.open) { fill = '#221f2b'; op = 0.92; }
-    else if (t.owner) { fill = colorFor(t.owner); op = 0.62; }
-    else { fill = terrainColor(t.id); op = 0.85; }
+  out += `<rect width="${MAP_W}" height="${MAP_H}" fill="url(#seaG)"/><rect width="${MAP_W}" height="${MAP_H}" filter="url(#waterTex)"/>`;
+
+  // rutas marítimas (líneas discontinuas por el mar, quedan bajo la tierra)
+  out += '<g>';
+  (state.seaRoutes || []).forEach(r => {
+    const a = byId[r.a], b = byId[r.b];
+    if (!a || !b) return;
+    out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#b9d6e4" stroke-width="1.3" stroke-dasharray="4 5" opacity="0.4"/>`;
+  });
+  out += '</g>';
+
+  // relieve de costa: sombra SE, aguas someras, luz NO, arena
+  out += '<g>';
+  for (const t of allTerrs) out += `<path d="${t.path}" fill="none" stroke="#0a1b28" stroke-width="18" stroke-linejoin="round" transform="translate(2.4 3)" opacity="0.5"/>`;
+  out += '</g><g>';
+  for (const t of allTerrs) out += `<path d="${t.path}" fill="#2c5c74" stroke="#2c5c74" stroke-width="14" stroke-linejoin="round" opacity="0.9"/>`;
+  out += '</g><g>';
+  for (const t of allTerrs) out += `<path d="${t.path}" fill="none" stroke="#e6d7a8" stroke-width="8" stroke-linejoin="round" transform="translate(-1.2 -1.6)" opacity="0.85"/>`;
+  out += '</g><g>';
+  for (const t of allTerrs) out += `<path d="${t.path}" fill="#c7b184" stroke="#c7b184" stroke-width="6.4" stroke-linejoin="round"/>`;
+  out += '</g>';
+
+  // terreno + bisel por provincia
+  out += '<g>';
+  for (const t of allTerrs) { if (!t.open) continue; out += `<path d="${t.path}" fill="${TERRA_FILL[t.terrain] || '#5e7c46'}"/>`; }
+  out += '</g><g>';
+  for (const t of allTerrs) {
+    if (!t.open) continue;
+    out += `<path d="${t.path}" fill="none" stroke="#f7eec6" stroke-width="1.2" transform="translate(-1 -1.2)" opacity="0.32"/>
+            <path d="${t.path}" fill="none" stroke="#14120a" stroke-width="1.5" transform="translate(1.1 1.4)" opacity="0.4"/>`;
+  }
+  out += '</g>';
+
+  // ríos
+  out += '<g>';
+  (state.rivers || []).forEach(r => {
+    out += `<path d="${r}" fill="none" stroke="#0e2a3d" stroke-width="4.2" opacity="0.55" stroke-linecap="round"/>
+            <path d="${r}" fill="none" stroke="#5b9cbf" stroke-width="1.9" opacity="0.9" stroke-linecap="round"/>`;
+  });
+  out += '</g>';
+
+  // doodads de terreno — recortados al polígono de su provincia para que ninguna montaña
+  // o árbol "flote" sobre el mar cuando la capital está pegada a la costa.
+  out += `<defs>${allTerrs.map(t => `<clipPath id="clip-${t.id}"><path d="${t.path}"/></clipPath>`).join('')}</defs>`;
+  for (const t of allTerrs) {
+    const d = doodads(t);
+    if (d) out += `<g clip-path="url(#clip-${t.id})">${d}</g>`;
+  }
+
+  // marcadores de Maravilla (ciudad amurallada)
+  for (const t of allTerrs) {
+    if (!t.wonder || !t.open) continue;
+    out += `<g transform="translate(${t.x + 20} ${t.y - 22})">
+      <ellipse cx="0" cy="7" rx="12" ry="2.4" fill="#000" opacity="0.3"/>
+      <rect x="-11" y="1" width="22" height="6" fill="#bdb08d" stroke="#453b26" stroke-width="0.7"/>
+      <rect x="-5" y="-4" width="4.6" height="5.4" fill="#cfc4a0" stroke="#453b26" stroke-width="0.6"/>
+      <polygon points="-5,-4 -2.7,-7 -0.4,-4" fill="#a3402f" stroke="#453b26" stroke-width="0.6"/>
+      <rect x="1" y="-3" width="4" height="4.4" fill="#cfc4a0" stroke="#453b26" stroke-width="0.6"/>
+      <text x="0" y="-9" text-anchor="middle" font-size="8">${t.wonder.icon}</text></g>`;
+  }
+
+  // niebla de Eras futuras
+  out += '<g>';
+  for (const t of allTerrs) { if (t.open) continue; out += `<path d="${t.path}" fill="url(#fogG)" opacity="0.95"/>`; }
+  out += '</g>';
+  for (const t of allTerrs) { if (t.open) continue; out += `<text x="${t.x}" y="${t.y + 3}" text-anchor="middle" font-size="11" opacity="0.5" style="pointer-events:none">☁️</text>`; }
+
+  // fronteras + zonas clicables + dueños + objetivo
+  out += '<g>';
+  for (const t of allTerrs) out += `<path d="${t.path}" fill="none" stroke="#39301e" stroke-width="1.1" opacity="0.85"/>`;
+  out += '</g>';
+  for (const t of allTerrs) {
     const click = t.open ? `focusTerritory('${t.id}')` : `peekTerritory('${t.id}')`;
-    return `<path class="terr-shape" data-terr="${t.id}" onclick="${click}" d="${t.path}" fill="${fill}" opacity="${op}" stroke="#171220" stroke-width="1.1" />`;
-  }).join('');
+    out += `<path class="terr-shape" data-terr="${t.id}" onclick="${click}" d="${t.path}" fill="#fff" opacity="0" />`;
+  }
+  out += '<g style="pointer-events:none">';
+  for (const t of allTerrs) {
+    if (!t.owner || !t.open) continue;
+    const c = colorFor(t.owner);
+    out += `<path d="${t.path}" fill="none" stroke="${c}" stroke-width="3" opacity="0.95"/><path d="${t.path}" fill="${c}" opacity="0.10"/>`;
+  }
+  out += '</g>';
+  for (const t of allTerrs) {
+    if (threatened.has(t.id)) out += `<g class="targetRing" style="pointer-events:none"><path d="${t.path}" fill="none" stroke="#ff5f4d" stroke-width="2.4" stroke-dasharray="7 5"/></g>`;
+  }
 
-  // Fronteras destacadas encima: rojas (atacables) primero, doradas (tuyas) al final.
-  const redBorders = allTerrs.filter(t => threatened.has(t.id)).map(t =>
-    `<path d="${t.path}" fill="none" stroke="#ff6b6b" stroke-width="1.8" opacity="0.95" style="pointer-events:none;" />`).join('');
-  const goldBorders = allTerrs.filter(t => mine.has(t.id)).map(t =>
-    `<path d="${t.path}" fill="none" stroke="var(--accent)" stroke-width="2.2" opacity="1" style="pointer-events:none;" />`).join('');
+  // nombres — con la altura alternada por provincia para que dos capitales pegadas
+  // no pisen sus rótulos entre sí.
+  for (const t of allTerrs) {
+    if (!t.open) continue;
+    const dy = 26 + (hashStr(t.id) % 2) * 10;
+    out += `<text x="${t.x}" y="${t.y + dy}" text-anchor="middle" font-size="7.6" fill="#f3ecd8"
+      style="font-family:Georgia,serif; letter-spacing:1.5px; paint-order:stroke; stroke:#241c10; stroke-width:2.4px; stroke-linejoin:round; pointer-events:none;">${t.name.toUpperCase().slice(0, 14)}</text>`;
+  }
 
-  const labels = allTerrs.map(t => {
-    if (!t.open) {
-      return `<text x="${t.x}" y="${t.y}" text-anchor="middle" dominant-baseline="central" font-size="11" opacity="0.6"
-        paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">🔒</text>`;
-    }
-    return `
-    <text x="${t.x}" y="${t.y - 3}" text-anchor="middle" dominant-baseline="central" font-size="13"
-      paint-order="stroke" stroke="#171220" stroke-width="3" stroke-linejoin="round" style="pointer-events:none;">${t.wonder ? t.wonder.icon : (t.icon || '📍')}</text>
-    <text x="${t.x}" y="${t.y + 12}" text-anchor="middle" font-size="9" fill="#fff"
-      paint-order="stroke" stroke="#171220" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;">${t.armies}${clsEraIcon(t.unitClass, t.era)}</text>`;
-  }).join('');
+  // unidades
+  for (const t of allTerrs) { if (t.open) out += unitGroup(t); }
 
-  return `<svg class="map-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" style="width:100%; height:auto; display:block; margin-bottom:4px; border-radius:8px; overflow:hidden;">
-    <rect x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="#101624" />
-    ${underlay}
-    ${fills}
-    ${redBorders}
-    ${goldBorders}
-    ${labels}
-  </svg>
-  <div class="map-legend muted">Toca una provincia para ver su ficha &nbsp; 🟡 dorado = tuya &nbsp; 🔴 rojo = puedes atacarla &nbsp; 🔒 = aún sin abrir &nbsp; El icono pequeño es su clase de guarnición.</div>`;
+  out += `<g id="fxLayer"></g>`;
+  out += `<rect width="${MAP_W}" height="${MAP_H}" fill="url(#sunL)" style="pointer-events:none"/>
+          <rect width="${MAP_W}" height="${MAP_H}" filter="url(#grain)" style="pointer-events:none"/>
+          <rect width="${MAP_W}" height="${MAP_H}" fill="url(#vign)" style="pointer-events:none"/>`;
+  return `<svg class="map-svg" id="mapSvg" viewBox="0 0 ${MAP_W} ${MAP_H}" style="width:100%; height:auto; display:block;">${out}</svg>`;
+}
+
+// Animaciones sobre el tablero al entrar en la resolución: marchas de conquista,
+// explosiones de asedio, monedas robadas y "+N" de refuerzos.
+function runMapFx() {
+  const svg = document.getElementById('mapSvg');
+  const layer = document.getElementById('fxLayer');
+  if (!svg || !layer || !state.mapFx) return;
+  const byId = {}; Object.values(state.territories).forEach(t => byId[t.id] = t);
+  let delay = 0;
+  for (const fx of state.mapFx) {
+    const d = delay; delay += 500;
+    setTimeout(() => {
+      if (fx.type === 'march' && fx.toId) {
+        const to = byId[fx.toId];
+        const from = fx.fromId ? byId[fx.fromId] : null;
+        const col = colorFor(fx.ownerId);
+        // OJO: la posición vive en el <g> EXTERIOR (atributo transform) y la animación CSS en
+        // uno interior — un style.transform sustituiría el transform del atributo y mandaría
+        // la unidad al origen del SVG.
+        const outer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const mover = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const figs = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        figs.setAttribute('class', 'marchFigs');
+        figs.innerHTML = unitArt(fx.cls, col, Math.min(3, fx.n || 2));
+        mover.appendChild(figs);
+        outer.appendChild(mover);
+        const sx = from ? from.x : to.x, sy = from ? from.y - 5 : to.y - 55;
+        outer.setAttribute('transform', `translate(${sx} ${sy})`);
+        mover.style.transition = 'transform 1.5s ease-in-out, opacity 0.4s ease 1.5s';
+        layer.appendChild(outer);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          mover.style.transform = `translate(${to.x - sx}px, ${to.y - 5 - sy}px)`;
+          setTimeout(() => { mover.style.opacity = '0'; setTimeout(() => outer.remove(), 500); }, 1600);
+        }));
+      } else if (fx.type === 'boom' && byId[fx.terrId]) {
+        const t = byId[fx.terrId];
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        el.setAttribute('x', t.x); el.setAttribute('y', t.y - 8);
+        el.setAttribute('text-anchor', 'middle'); el.setAttribute('font-size', '18');
+        el.setAttribute('class', 'fxBoom');
+        el.textContent = '💥';
+        layer.appendChild(el);
+        setTimeout(() => el.remove(), 1600);
+      } else if (fx.type === 'coin' && byId[fx.fromId] && byId[fx.toId]) {
+        const from = byId[fx.fromId], to = byId[fx.toId];
+        const outer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        outer.setAttribute('transform', `translate(${from.x} ${from.y - 14})`);
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        el.setAttribute('text-anchor', 'middle'); el.setAttribute('font-size', '13');
+        el.textContent = '💰';
+        el.style.transition = 'transform 1.2s ease-in-out, opacity 0.3s ease 1.2s';
+        outer.appendChild(el);
+        layer.appendChild(outer);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          el.style.transform = `translate(${to.x - from.x}px, ${to.y - from.y}px)`;
+          setTimeout(() => { el.style.opacity = '0'; setTimeout(() => outer.remove(), 400); }, 1300);
+        }));
+      } else if (fx.type === 'plus' && byId[fx.terrId]) {
+        const t = byId[fx.terrId];
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        el.setAttribute('x', t.x + 14); el.setAttribute('y', t.y - 20);
+        el.setAttribute('text-anchor', 'middle'); el.setAttribute('font-size', '11');
+        el.setAttribute('fill', '#9fe08a'); el.setAttribute('font-weight', 'bold');
+        el.setAttribute('class', 'fxFloat');
+        el.setAttribute('style', 'paint-order:stroke; stroke:#10151f; stroke-width:2.4px;');
+        el.textContent = `+${fx.n}`;
+        layer.appendChild(el);
+        setTimeout(() => el.remove(), 2000);
+      }
+    }, d);
+  }
 }
 
 function focusTerritory(id) {
@@ -912,77 +1126,169 @@ function focusTerritory(id) {
   el.classList.add('flash');
   setTimeout(() => el.classList.remove('flash'), 900);
 }
-
 function peekTerritory(id) {
   const t = state.territories[id];
   if (!t) return;
-  showError(`🔒 Provincia aún sin abrir — se revela al empezar la ${ERA_LABELS[t.era]}.`);
+  showError(`☁️ Provincia aún sin abrir — se revela al empezar la ${ERA_LABELS[t.era]}.`);
 }
 
-// Panel de VÍAS DE VICTORIA: el progreso de cada jugador hacia Dominación (territorios),
-// Cultura (maravillas) y Gloria — para que siempre se sepa quién va ganando y por dónde.
+// ---------------------------------------------------------------------------
+// Escena de batalla a lo Risk (por cada parte de batalla del servidor)
+// ---------------------------------------------------------------------------
+function bigFigs(cls, col, n, mirror) {
+  const capped = Math.min(cls === 'cab' ? 2 : 3, Math.max(1, n));
+  let out = `<ellipse cx="72" cy="100" rx="58" ry="6" fill="#000" opacity="0.3"/>`;
+  for (let i = 0; i < capped; i++) {
+    // El arte v6 es más ancho (sobre todo el caballo): posiciones y escala ajustadas
+    // para que las formaciones grandes no se corten en la escena de batalla.
+    const x = cls === 'cab' ? 46 + i * 56 : 40 + i * 38;
+    const y = cls === 'cab' ? 56 + (i % 2) * 6 : 52 + (i % 2) * 7;
+    const sc = (cls === 'cab' ? 2.6 : 2.9) * (1 - i * 0.04);
+    out += `<g transform="translate(${x} ${y}) scale(${mirror ? -sc : sc} ${sc})">${({ inf: soldierInf, arq: soldierArq, cab: soldierCab })[cls](col, i > 1)}</g>`;
+  }
+  return out;
+}
+function renderBattleCard(b, idx) {
+  const aCol = colorFor(b.attackerId);
+  const dCol = b.defenderId ? colorFor(b.defenderId) : '#9a9aa6';
+  const title = { asalto: '⚔️ Asalto a', asedio: '💣 Asedio de', incursion: '🐎 Incursión sobre' }[b.mode] + ' ' + b.terrName;
+  const aName = clsEraName(b.aCls, b.aEra), dName = clsEraName(b.dCls, b.dEra);
+
+  let duelsHtml = '';
+  let ribbon = '';
+  if (b.mode === 'asalto') {
+    const maxLen = Math.max(b.aDice.length, b.dDice.length);
+    let delayN = 0;
+    for (let i = 0; i < maxLen; i++) {
+      const a = b.aDice[i], d = b.dDice[i];
+      const duel = b.duels[i];
+      const aDie = a !== undefined ? `<div class="die2 ${duel ? '' : 'dim'}" style="animation-delay:${(delayN++) * 0.15}s">${a}</div>` : `<div class="die2" style="visibility:hidden">·</div>`;
+      const dDie = d !== undefined ? `<div class="die2 red ${duel ? '' : 'dim'}" style="animation-delay:${(delayN++) * 0.15}s">${d}</div>` : `<div class="die2" style="visibility:hidden">·</div>`;
+      const mid = duel
+        ? `<div class="duelArrow ${duel.win === 'a' ? 'atk' : 'def'}">${duel.a} ${duel.win === 'a' ? '›' : '‹'} ${duel.d} ⚔️</div>`
+        : `<div class="duelArrow none">sin rival</div>`;
+      const note = duel
+        ? `<div class="duelNote">${duel.win === 'a' ? 'el defensor pierde 1' : 'el atacante pierde 1'}</div>`
+        : `<div class="duelNote">no se enfrenta</div>`;
+      duelsHtml += `<div class="duel">${aDie}${mid}${dDie}${note}</div>`;
+    }
+    ribbon = b.conquered
+      ? `<span class="ribbon">🏛️ ¡${b.terrName} conquistada!</span>`
+      : `<span class="ribbon dark">🛡️ La defensa de ${b.terrName} aguanta</span>`;
+  } else {
+    const aTxt = `${b.aVal}${b.aCounter ? ' (con +1 de ventaja)' : ''}`;
+    const dTxt = `${b.dVal}${b.dCounter ? ' (con +1 de ventaja)' : ''}`;
+    duelsHtml = `<div class="duel">
+      <div class="die2" style="animation-delay:0.05s">${b.aVal}</div>
+      <div class="duelArrow ${b.win === 'a' ? 'atk' : 'def'}">${b.aVal} ${b.win === 'a' ? '›' : '‹'} ${b.dVal}</div>
+      <div class="die2 red" style="animation-delay:0.2s">${b.dVal}</div>
+      <div class="duelNote">${b.win === 'a' ? (b.mode === 'asedio' ? 'la guarnición pierde 1' : `roba ${b.stole} 💰`) : 'el atacante pierde 1'}</div>
+    </div>`;
+    ribbon = b.mode === 'asedio'
+      ? (b.win === 'a' ? `<span class="ribbon">💣 El asedio hace mella en ${b.terrName}</span>` : `<span class="ribbon dark">🛡️ ${b.terrName} resiste el asedio</span>`)
+      : (b.win === 'a' ? `<span class="ribbon">💰 Botín: ${b.stole} Recurso(s) robados</span>` : `<span class="ribbon dark">🛡️ La incursión es repelida</span>`);
+  }
+
+  return `<div class="card battleCard">
+    <p class="battleTitle">${title}</p>
+    <p class="battleSub">${aName} de <b style="color:${aCol}">${b.attackerName}</b>${b.aCounter ? ' (¡ventaja de clase!)' : ''} · contra ${dName} ${b.defenderId ? `de <b style="color:${dCol}">${b.defenderName}</b>` : 'neutrales'}${b.dCounter ? ' (¡ventaja de clase!)' : ''}</p>
+    <div class="armiesRow">
+      <svg viewBox="0 0 150 106" width="46%"> ${bigFigs(b.aCls, aCol, b.aCount || 2, false)} </svg>
+      <div class="clash">💥</div>
+      <svg viewBox="0 0 150 106" width="46%"> ${bigFigs(b.dCls, dCol, b.dCount || 2, true)} </svg>
+    </div>
+    <div class="armyLbl">
+      <span><small>Atacante</small>${clsEraIcon(b.aCls, b.aEra)} ${aName} ×${b.aCount || '?'}</span>
+      <span style="text-align:right;"><small>Defensor</small>${clsEraIcon(b.dCls, b.dEra)} ${dName} ×${b.dCount || '?'}</span>
+    </div>
+    <div class="duels">${duelsHtml}</div>
+    ${b.mode === 'asalto' ? `<p class="riskCaption">Como en el Risk: los dados se enfrentan de mayor a mayor — el empate lo gana el defensor (salvo tropa de élite).</p>` : ''}
+    <div class="ribbonWrap">${ribbon}</div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Paneles: matrimonio, victoria, tropas, maravillas
+// ---------------------------------------------------------------------------
+function renderMarriagePanel() {
+  const you = state.you;
+  if (!you || !you.proposal) return '';
+  const from = state.players.find(p => p.id === you.proposal.from);
+  const L1 = from && from.leader ? state.leaders[from.leader] : null;
+  const m = me();
+  const L2 = m && m.leader ? state.leaders[m.leader] : null;
+  return `<div class="card wedCard">
+    <h2>💍 Propuesta de matrimonio</h2>
+    <div class="wedPair">
+      ${L1 ? portraitFrame(L1, 'medium') : ''}
+      <span class="rings">💍</span>
+      ${L2 ? portraitFrame(L2, 'medium') : ''}
+    </div>
+    <p class="wedText"><b>${you.proposal.fromName}</b> pide la mano de tu casa. Si aceptas, <b>todo el grupo brinda por los novios</b> 🥂</p>
+    <p class="wedFx">Casados: no deberíais atacaros · +1 dado cuando defendéis · veis vuestras órdenes secretas.<br>
+    Romper el matrimonio atacando = <b style="color:#ff9d8a">escándalo</b>: −2 Gloria y 3 sorbos.</p>
+    <div class="row">
+      <button id="acceptWed">🥂 Aceptar la boda</button>
+      <button class="secondary" id="rejectWed">Rechazar (bebes 1)</button>
+    </div>
+  </div>`;
+}
+
 function renderVictoryPanel() {
   if (!state.players.length) return '';
   const wondersBy = {};
-  Object.values(state.territories).forEach(t => {
-    if (t.wonder && t.owner) wondersBy[t.owner] = (wondersBy[t.owner] || 0) + 1;
-  });
+  Object.values(state.territories).forEach(t => { if (t.wonder && t.owner) wondersBy[t.owner] = (wondersBy[t.owner] || 0) + 1; });
   return `<div class="card">
     <h2>🏆 Vías de victoria</h2>
     ${state.players.map((p, i) => {
       const terrs = Object.values(state.territories).filter(t => t.open && t.owner === p.id).length;
       return `<div class="victory-row">
         <span class="dot" style="background:${PLAYER_COLORS_RAW[i]}"></span>
-        <span class="vname">${p.name}${p.id === myId ? ' (tú)' : ''}</span>
+        <span class="vname">${p.name}${p.id === myId ? ' (tú)' : ''}${p.married ? ' 💍' : ''}</span>
         <span class="vstat">🗺️ ${terrs}/${state.dominationNeeded}</span>
         <span class="vstat">🏛️ ${wondersBy[p.id] || 0}/${state.wondersToWin}</span>
         <span class="vstat">🏆 ${p.gloria}</span>
       </div>`;
     }).join('')}
-    <p class="muted victory-note">🗺️ Dominación: controla ${state.dominationNeeded} territorios abiertos y ganas al instante. &nbsp; 🏛️ Cultura: controla ${state.wondersToWin} Maravillas y ganas al instante. &nbsp; 🏆 Gloria: si nadie ha ganado antes, decide al final de la Era III.</p>
+    <p class="muted victory-note">🗺️ Dominación: ${state.dominationNeeded} territorios = victoria instantánea · 🏛️ Cultura: ${state.wondersToWin} Maravillas = victoria instantánea · 🏆 Gloria: decide al final de la Era III.</p>
   </div>`;
 }
 
-// Panel de tropas y mejoras: las 3 clases, qué vence a qué, y la escalera de niveles de cada una.
-// Subir de nivel no consume tu orden de la ronda y vale PARA SIEMPRE (todas tus tropas de esa
-// clase, en todas las Épocas). Sun Tzu paga 2 Recursos menos.
 function renderTroopPanel() {
   const m = me();
   if (!m) return '';
   const myResources = m.resources || 0;
   return `<div class="card">
     <h2>⚔️ Tus tropas y mejoras</h2>
-    <p class="muted" style="margin-bottom:10px;">Tienes <b style="color:var(--accent)">${myResources} 💰 Recursos</b> (1 por territorio controlado al final de cada ronda). La rueda de ventajas: 🛡️ Infantería vence a 🐎 Caballería, que vence a 🏹 A distancia, que vence a Infantería (+1 dado). Mejorar una clase es para siempre y no gasta tu orden.</p>
+    <p class="muted" style="margin-bottom:10px;">Tienes <b style="color:var(--gold)">${myResources} 💰</b> (1 por territorio y ronda). Rueda de ventajas: 🛡️ Infantería vence a 🐎 Caballería, que vence a 🏹 A distancia, que vence a Infantería (+1 dado). Mejorar es para siempre y no gasta tu orden.</p>
     ${CLASS_KEYS.map(k => {
       const c = clsDef(k);
       const curLevel = (m.troopLevels && m.troopLevels[k]) || 1;
       const nextDef = c.levels.find(l => l.level === curLevel + 1);
       const eraNames = [1, 2, 3].map(e => `${ERA_LABELS[e]}: ${c.byEra[e].icon} ${c.byEra[e].name}`).join(' · ');
-      return `
-        <div class="troop-tier">
-          <div class="troop-tier-head">
-            <span class="portrait" style="border-color:var(--accent)">${clsEraIcon(k, state.era)}</span>
-            <span><b>${c.clase}</b><br><span class="muted" style="font-size:0.7rem;">${eraNames}</span></span>
-          </div>
-          <div class="tactica">💡 ${c.tacticaDesc}</div>
-          <div class="level-ladder">
-            ${c.levels.map(l => {
-              const status = l.level < curLevel ? '✅' : l.level === curLevel ? '👉' : '🔒';
-              const cls2 = l.level === curLevel ? 'level-current' : '';
-              const shownCost = l.cost ? myLevelCost(l.cost) : 0;
-              return `<div class="level-row ${cls2}">
-                <div class="level-row-title">${status} Nivel ${l.level} — ${l.name}${l.cost ? ` <span class="muted">(coste ${shownCost} 💰${m.leader === 'suntzu' ? ', con descuento de Sun Tzu' : ''})</span>` : ' <span class="muted">(inicial)</span>'}</div>
-                <div class="level-row-desc muted">${l.desc}</div>
-              </div>`;
-            }).join('')}
-          </div>
-          ${nextDef ? `<button class="secondary level-up-btn" data-cls="${k}" ${myResources < myLevelCost(nextDef.cost) ? 'disabled' : ''}>⬆️ Mejorar a "${nextDef.name}" (${myLevelCost(nextDef.cost)} 💰)${myResources < myLevelCost(nextDef.cost) ? ` — te faltan ${myLevelCost(nextDef.cost) - myResources}` : ''}</button>` : `<p class="muted center" style="margin-bottom:4px;">Nivel máximo alcanzado.</p>`}
-        </div>`;
+      return `<div class="troop-tier">
+        <div class="troop-tier-head">
+          <span class="frame small"><span class="fallback">${clsEraIcon(k, state.era)}</span></span>
+          <span><b>${c.clase}</b><br><span class="muted" style="font-size:0.62rem;">${eraNames}</span></span>
+        </div>
+        <div class="tactica">💡 ${c.tacticaDesc}</div>
+        <div class="level-ladder">
+          ${c.levels.map(l => {
+            const status = l.level < curLevel ? '✅' : l.level === curLevel ? '👉' : '🔒';
+            const cls2 = l.level === curLevel ? 'level-current' : '';
+            const shownCost = l.cost ? myLevelCost(l.cost) : 0;
+            return `<div class="level-row ${cls2}">
+              <div class="level-row-title">${status} Nivel ${l.level} — ${l.name}${l.cost ? ` <span class="muted">(coste ${shownCost} 💰)</span>` : ' <span class="muted">(inicial)</span>'}</div>
+              <div class="level-row-desc muted">${l.desc}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        ${nextDef ? `<button class="secondary level-up-btn" data-cls="${k}" ${myResources < myLevelCost(nextDef.cost) ? 'disabled' : ''}>⬆️ Mejorar a "${nextDef.name}" (${myLevelCost(nextDef.cost)} 💰)${myResources < myLevelCost(nextDef.cost) ? ` — te faltan ${myLevelCost(nextDef.cost) - myResources}` : ''}</button>` : `<p class="muted center" style="margin-bottom:4px;">Nivel máximo alcanzado.</p>`}
+      </div>`;
     }).join('')}
   </div>`;
 }
 
-// Panel de Maravillas: construir una (si tienes territorio libre de maravilla y Recursos).
 function renderWonderPanel() {
   const m = me();
   if (!m) return '';
@@ -990,12 +1296,12 @@ function renderWonderPanel() {
   const myWonders = Object.values(state.territories).filter(t => t.wonder && t.owner === myId);
   return `<div class="card">
     <h2>🏛️ Maravillas</h2>
-    <p class="muted" style="margin-bottom:8px;">Cuestan ${state.wonderCost} 💰 y se construyen en un territorio tuyo (una por territorio), sin gastar tu orden. ¡Ojo: si te conquistan el territorio, la Maravilla cambia de dueño! Controlar ${state.wondersToWin} a la vez = victoria por Cultura.</p>
-    ${myWonders.length ? `<p class="muted">Tuyas ahora mismo: ${myWonders.map(t => `${t.wonder.icon} ${t.wonder.name} (en ${t.name})`).join(' · ')}</p>` : ''}
+    <p class="muted" style="margin-bottom:8px;">Cuestan ${state.wonderCost} 💰, en territorio tuyo (una por territorio), sin gastar tu orden. ¡Si te conquistan el territorio, la Maravilla cambia de dueño! ${state.wondersToWin} a la vez = victoria por Cultura.</p>
+    ${myWonders.length ? `<p class="muted">Tuyas: ${myWonders.map(t => `${t.wonder.icon} ${t.wonder.name} (${t.name})`).join(' · ')}</p>` : ''}
     ${candidates.length ? `
       <select id="wonderTerr">${candidates.map(t => `<option value="${t.id}">${t.icon || ''} ${t.name}</option>`).join('')}</select>
       <button class="secondary" id="buildWonderBtn" ${(m.resources || 0) < state.wonderCost ? 'disabled' : ''}>🏛️ Construir Maravilla (${state.wonderCost} 💰)${(m.resources || 0) < state.wonderCost ? ` — te faltan ${state.wonderCost - (m.resources || 0)}` : ''}</button>
-    ` : `<p class="muted">Necesitas controlar un territorio sin Maravilla para poder construir.</p>`}
+    ` : `<p class="muted">Necesitas controlar un territorio sin Maravilla para construir.</p>`}
   </div>`;
 }
 
@@ -1008,6 +1314,10 @@ function wirePanels() {
     const sel = document.getElementById('wonderTerr');
     if (sel) call('construir_maravilla', { territoryId: sel.value });
   };
+  const aw = document.getElementById('acceptWed');
+  if (aw) aw.onclick = () => call('respond_marriage', { accept: true });
+  const rw = document.getElementById('rejectWed');
+  if (rw) rw.onclick = () => call('respond_marriage', { accept: false });
 }
 
 render();
